@@ -1,8 +1,14 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { DEFAULT_SETTINGS, TABLES, type Records, type SettingKey, type Settings, type Table } from "@/lib/records";
 import type { NewTask, Task, TaskPatch, Thought } from "@/lib/types";
 
-interface State { tasks: Task[]; thoughts: Thought[]; today: string; demo: boolean; ai: boolean; loaded: boolean; error: string }
+interface State {
+  tasks: Task[]; thoughts: Thought[]; rec: Records; settings: Settings;
+  today: string; demo: boolean; ai: boolean; migrate: boolean; loaded: boolean; error: string;
+}
+type RowOf<T extends Table> = Records[T][number];
+const EMPTY = Object.fromEntries(TABLES.map((t) => [t, []])) as unknown as Records;
 
 async function api<T>(url: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const r = await fetch(url, {
@@ -22,7 +28,7 @@ async function api<T>(url: string, init?: { method?: string; body?: unknown }): 
 }
 
 function useAppState() {
-  const [s, setS] = useState<State>({ tasks: [], thoughts: [], today: "", demo: false, ai: false, loaded: false, error: "" });
+  const [s, setS] = useState<State>({ tasks: [], thoughts: [], rec: EMPTY, settings: DEFAULT_SETTINGS, today: "", demo: false, ai: false, migrate: false, loaded: false, error: "" });
   const [toastMsg, setToast] = useState("");
   const tRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const toast = useCallback((m: string) => {
@@ -102,9 +108,58 @@ function useAppState() {
     } catch (e) { fail(e); return null; }
   }, [fail]);
 
+  // Phase 2 tables share one set of calls.
+  const setRows = useCallback(<T extends Table>(t: T, f: (rows: RowOf<T>[]) => RowOf<T>[]) => {
+    setS((x) => ({ ...x, rec: { ...x.rec, [t]: f(x.rec[t] as RowOf<T>[]) } }));
+  }, []);
+
+  const addRec = useCallback(async <T extends Table>(t: T, rows: object[]): Promise<RowOf<T>[]> => {
+    try {
+      const out = (await api<{ rows: RowOf<T>[] }>(`/api/rec/${t}`, { method: "POST", body: { rows } })).rows;
+      setRows(t, (r) => [...r, ...out]);
+      return out;
+    } catch (e) { fail(e); return []; }
+  }, [fail, setRows]);
+
+  const patchRec = useCallback(async <T extends Table>(t: T, id: string, patch: Partial<RowOf<T>>) => {
+    let before: RowOf<T> | undefined;
+    setRows(t, (r) => r.map((x) => (x.id === id ? ((before = x), { ...x, ...patch }) : x)));
+    try {
+      await api(`/api/rec/${t}/${id}`, { method: "PATCH", body: patch });
+      return true;
+    } catch (e) {
+      if (before) { const b = before; setRows(t, (r) => r.map((x) => (x.id === id ? b : x))); }
+      fail(e);
+      return false;
+    }
+  }, [fail, setRows]);
+
+  const removeRec = useCallback(async (t: Table, id: string) => {
+    try {
+      await api(`/api/rec/${t}/${id}`, { method: "DELETE" });
+      // Folders cascade on the server (subfolders, notes, meeting links): reload instead of guessing.
+      if (t === "folders") await reload();
+      else setRows(t, (r) => r.filter((x) => x.id !== id));
+      return true;
+    } catch (e) { fail(e); return false; }
+  }, [fail, reload, setRows]);
+
+  const setSetting = useCallback(async <K extends SettingKey>(key: K, value: Settings[K]) => {
+    let before: Settings[K] | undefined;
+    setS((x) => ((before = x.settings[key]), { ...x, settings: { ...x.settings, [key]: value } }));
+    try {
+      await api("/api/settings", { method: "PUT", body: { key, value } });
+      return true;
+    } catch (e) {
+      if (before !== undefined) { const b = before; setS((x) => ({ ...x, settings: { ...x.settings, [key]: b } })); }
+      fail(e);
+      return false;
+    }
+  }, [fail]);
+
   return useMemo(
-    () => ({ ...s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate }),
-    [s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate],
+    () => ({ ...s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate, addRec, patchRec, removeRec, setSetting }),
+    [s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate, addRec, patchRec, removeRec, setSetting],
   );
 }
 

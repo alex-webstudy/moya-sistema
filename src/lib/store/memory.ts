@@ -82,23 +82,21 @@ export const memoryStore: Store = {
     return { ...row } as Records[T][number];
   },
   async remove(table: Table, id: string) {
-    const rec = db().rec as Record<Table, { id: string }[]>;
-    rec[table] = rec[table].filter((x) => x.id !== id);
+    const rec = db().rec;
     if (table === "folders") {
-      // Mirror the database cascade: drop subfolders and their notes, detach meetings.
-      const alive = new Set(rec.folders.map((f) => f.id));
-      let changed = true;
-      while (changed) {
-        const before = rec.folders.length;
-        rec.folders = (rec.folders as Records["folders"]).filter((f) => !f.parent_id || alive.has(f.parent_id));
-        rec.folders.forEach((f) => alive.add(f.id));
-        const ids = new Set(rec.folders.map((f) => f.id));
-        alive.forEach((x) => { if (!ids.has(x)) alive.delete(x); });
-        changed = rec.folders.length !== before;
+      // Mirror the database cascade: subfolders and their notes go too, meetings are detached.
+      const gone = new Set([id]);
+      for (let grew = true; grew;) {
+        grew = false;
+        for (const f of rec.folders) if (f.parent_id && gone.has(f.parent_id) && !gone.has(f.id)) { gone.add(f.id); grew = true; }
       }
-      rec.notes = (rec.notes as Records["notes"]).filter((n) => !n.folder_id || alive.has(n.folder_id));
-      (rec.meetings as Records["meetings"]).forEach((m) => { if (m.folder_id && !alive.has(m.folder_id)) m.folder_id = null; });
+      rec.folders = rec.folders.filter((f) => !gone.has(f.id));
+      rec.notes = rec.notes.filter((n) => !n.folder_id || !gone.has(n.folder_id));
+      rec.meetings.forEach((m) => { if (m.folder_id && gone.has(m.folder_id)) m.folder_id = null; });
+      return;
     }
+    if (table === "clients") rec.income.forEach((i) => { if (i.client_id === id) i.client_id = null; });
+    (rec as Record<Table, { id: string }[]>)[table] = rec[table].filter((x) => x.id !== id);
   },
   async getSettings() { return { ...db().settings }; },
   async setSetting<K extends SettingKey>(key: K, value: Settings[K]) { db().settings[key] = value; },
