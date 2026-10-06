@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useApp } from "@/components/store";
 import { addDays } from "@/lib/dates";
+import { CLAUDE_PROMPT } from "@/lib/parseLines";
+import { openInClaude } from "@/lib/openInClaude";
 
 export default function Thoughts() {
   const { thoughts, ai, today, addThought, deleteThought, sortThoughts, addTasks, toast } = useApp();
@@ -18,6 +20,10 @@ export default function Thoughts() {
     const done = await sortThoughts();
     setBusy(false);
     if (done) setSorted(done);
+  }
+  function askClaude() {
+    openInClaude(CLAUDE_PROMPT + thoughts.map((n) => "- " + n.text).join("\n"));
+    toast("Ответ Claude вставь в «Задачи»");
   }
   async function toTask(id: string, title: string) {
     if ((await addTasks([{ title, project: "Личное", due: addDays(today, 1), time: null }])).length) {
@@ -37,9 +43,11 @@ export default function Thoughts() {
         <section className="panel" style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 240px" }}>
             <b>Разложить всё автоматически</b>
-            <div className="sub" style={{ fontSize: 12 }}>{ai ? "Claude решит, что задача, что заметка проекта, а что идея для контента" : "Нужен ключ ANTHROPIC_API_KEY, пока можно переносить вручную"}</div>
+            <div className="sub" style={{ fontSize: 12 }}>{ai ? "Claude решит, что задача, что заметка проекта, а что идея для контента" : "Откроется Claude с твоими мыслями, а готовый список вставь в «Задачи»"}</div>
           </div>
-          <button className="btn pri" disabled={!ai || busy} onClick={sort}>{busy ? "Раскладываю…" : "Разложить с Claude"}</button>
+          {ai
+            ? <button className="btn pri" disabled={busy} onClick={sort}>{busy ? "Раскладываю…" : "Разложить с Claude"}</button>
+            : <button className="btn pri" onClick={askClaude}>Разобрать в Claude ↗</button>}
         </section>
       )}
       {sorted && sorted.length > 0 && (
