@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useApp } from "@/components/store";
 import { TaskRow } from "@/components/TaskRow";
-import { addDays, diffDays, fd } from "@/lib/dates";
+import { diffDays, fd } from "@/lib/dates";
+import { CLAUDE_PROMPT, parseLines } from "@/lib/parseLines";
 import { prepareFiles } from "@/lib/files";
 import type { NewTask, Task } from "@/lib/types";
 
@@ -28,11 +29,12 @@ export default function Tasks() {
   async function add() {
     const t = text.trim();
     if (!ai) {
-      // Without Claude every line becomes a task for tomorrow.
-      if (files.length) return toast("Скриншоты и файлы разбирает Claude: добавь ANTHROPIC_API_KEY");
-      if (!t) return toast("Напиши задачу");
-      const items = t.split("\n").map((x) => x.trim()).filter(Boolean).map((title) => ({ title, project: "Личное", due: addDays(today, 1), time: null }));
-      if ((await addTasks(items)).length) { setText(""); toast("Добавлено: " + items.length); }
+      // Without the API key: parse a ready-made list (e.g. written by Claude in the chat app) locally.
+      if (files.length) return toast("Скриншоты разбирает Claude: пока вставь готовый список текстом");
+      if (!t) return toast("Напиши задачу или вставь готовый список");
+      const items = parseLines(t, today);
+      if (!items.length) return toast("Задач не нашёл");
+      setPreview(items);
       return;
     }
     if (!t && !files.length) return toast("Надиктуй задачи или прикрепи скриншот");
@@ -44,6 +46,11 @@ export default function Tasks() {
     if (!out) return;
     if (!out.length) return toast("Задач не нашёл");
     setPreview(out);
+  }
+
+  async function copyPrompt(text: string) {
+    try { await navigator.clipboard.writeText(text); toast("Скопировано: вставь в Claude, добавь расшифровку, а ответ вставь сюда"); }
+    catch { toast("Не удалось скопировать"); }
   }
 
   async function confirm() {
@@ -72,7 +79,8 @@ export default function Tasks() {
           <label className="btn" style={{ cursor: "pointer" }} title="Скриншот или файл">
             📎<input type="file" multiple accept="image/*,.pdf,.txt,.md,.csv,.json" hidden onChange={(e) => { setFiles([...files, ...Array.from(e.target.files ?? [])].slice(0, 5)); e.target.value = ""; }} />
           </label>
-          <span className="sub" style={{ fontSize: 12, flex: 1 }}>{ai ? "Claude сам проставит проект, дату и время" : "Каждая строка станет задачей на завтра"}</span>
+          <span className="sub" style={{ fontSize: 12, flex: 1 }}>{ai ? "Claude сам проставит проект, дату и время" : "Одна задача на строку: «завтра 15:00 #Клиенты Отправить договор». Без даты задача ставится на завтра"}</span>
+          {!ai && <button className="btn" type="button" title="Скопировать текст, который нужно отправить Claude вместе с расшифровкой" onClick={() => copyPrompt(CLAUDE_PROMPT)}>Подсказка для Claude</button>}
           <button className="btn pri" type="button" disabled={busy} onClick={add}>{busy ? "Разбираю…" : "Добавить"}</button>
         </div>
         {preview && (

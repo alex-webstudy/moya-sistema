@@ -5,11 +5,25 @@ import { useEffect, useState } from "react";
 import { Icons } from "./icons";
 import { useApp } from "./store";
 
-const NAV = [
+const NAV: { href: string; name: string; ico: React.ReactNode; count?: "thoughts" | "tasks"; soon?: boolean }[] = [
   { href: "/", name: "Сегодня", ico: Icons.today },
-  { href: "/thoughts", name: "Быстрая мысль", ico: Icons.plus, count: "thoughts" as const },
+  { href: "/ask", name: "Спросить", ico: Icons.ai, soon: true },
+  { href: "/thoughts", name: "Быстрая мысль", ico: Icons.plus, count: "thoughts" },
   { href: "/calendar", name: "Календарь", ico: Icons.cal },
-  { href: "/tasks", name: "Задачи", ico: Icons.tasks, count: "tasks" as const },
+  { href: "/meetings", name: "Встречи", ico: Icons.meet, soon: true },
+  { href: "/goals", name: "Цели", ico: Icons.goal, soon: true },
+  { href: "/projects", name: "Проекты", ico: Icons.proj, soon: true },
+  { href: "/tasks", name: "Задачи", ico: Icons.tasks, count: "tasks" },
+  { href: "/content", name: "Контент", ico: Icons.content, soon: true },
+  { href: "/competitors", name: "Конкуренты", ico: Icons.comp, soon: true },
+  { href: "/clients", name: "Клиенты", ico: Icons.clients, soon: true },
+  { href: "/finance", name: "Финансы", ico: Icons.fin, soon: true },
+  { href: "/health", name: "Здоровье", ico: Icons.health, soon: true },
+  { href: "/lists", name: "Списки", ico: Icons.list, soon: true },
+  { href: "/week", name: "Итоги недели", ico: Icons.week, soon: true },
+  { href: "/evening", name: "Вечер", ico: Icons.evening, soon: true },
+  { href: "/vault", name: "Пароли", ico: Icons.vault, soon: true },
+  { href: "/settings", name: "Настройки", ico: Icons.gear, soon: true },
 ];
 
 /** Auto theme: light from 7:00 to 19:00, dark in the evening. */
@@ -67,10 +81,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="brand">Моя система<small>Алексей Кутепов</small></div>
         <nav className="nav">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className={"ni" + (path === n.href ? " on" : "")}>
+            <Link key={n.href} href={n.href} className={"ni" + (path === n.href ? " on" : "") + (n.soon ? " later" : "")}>
               {n.ico}
               <span>{n.name}</span>
               {n.count && counts[n.count] > 0 && <span className="count">{counts[n.count]}</span>}
+              {n.soon && <span className="tag">скоро</span>}
             </Link>
           ))}
         </nav>
