@@ -7,7 +7,6 @@ import { useApp } from "./store";
 
 const NAV: { href: string; name: string; ico: React.ReactNode; count?: "thoughts" | "tasks"; soon?: boolean }[] = [
   { href: "/", name: "Сегодня", ico: Icons.today },
-  { href: "/ask", name: "Спросить", ico: Icons.ai, soon: true },
   { href: "/thoughts", name: "Быстрая мысль", ico: Icons.plus, count: "thoughts" },
   { href: "/calendar", name: "Календарь", ico: Icons.cal },
   { href: "/meetings", name: "Встречи", ico: Icons.meet, soon: true },
@@ -15,7 +14,6 @@ const NAV: { href: string; name: string; ico: React.ReactNode; count?: "thoughts
   { href: "/projects", name: "Проекты", ico: Icons.proj, soon: true },
   { href: "/tasks", name: "Задачи", ico: Icons.tasks, count: "tasks" },
   { href: "/content", name: "Контент", ico: Icons.content, soon: true },
-  { href: "/competitors", name: "Конкуренты", ico: Icons.comp, soon: true },
   { href: "/clients", name: "Клиенты", ico: Icons.clients, soon: true },
   { href: "/finance", name: "Финансы", ico: Icons.fin, soon: true },
   { href: "/health", name: "Здоровье", ico: Icons.health, soon: true },

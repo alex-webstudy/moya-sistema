@@ -13,9 +13,6 @@ export const Icons = {
   tasks: (
     <svg {...p}><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8.5 12 2.5 2.5 4.5-5" /></svg>
   ),
-  ai: (
-    <svg {...p}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /></svg>
-  ),
   meet: (
     <svg {...p}><rect x="3" y="6" width="12" height="12" rx="2.5" /><path d="m15 10.5 6-3.5v10l-6-3.5" /></svg>
   ),
@@ -27,9 +24,6 @@ export const Icons = {
   ),
   content: (
     <svg {...p}><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m10 9.5 4.5 2.5-4.5 2.5z" /></svg>
-  ),
-  comp: (
-    <svg {...p}><circle cx="6.5" cy="15.5" r="3.5" /><circle cx="17.5" cy="15.5" r="3.5" /><path d="M10 15h4M4 13l2.5-7h2L10 12M20 13l-2.5-7h-2L14 12" /></svg>
   ),
   clients: (
     <svg {...p}><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5M10 13h6M10 17h4" /></svg>

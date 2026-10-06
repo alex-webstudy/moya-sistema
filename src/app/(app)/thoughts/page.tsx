@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useApp } from "@/components/store";
 import { addDays } from "@/lib/dates";
 import { CLAUDE_PROMPT } from "@/lib/parseLines";
+import { openInClaude } from "@/lib/openInClaude";
 
 export default function Thoughts() {
   const { thoughts, ai, today, addThought, deleteThought, sortThoughts, addTasks, toast } = useApp();
@@ -20,11 +21,9 @@ export default function Thoughts() {
     setBusy(false);
     if (done) setSorted(done);
   }
-  async function copyForClaude() {
-    try {
-      await navigator.clipboard.writeText(CLAUDE_PROMPT + thoughts.map((n) => "- " + n.text).join("\n"));
-      toast("Скопировано: вставь в Claude, а его ответ вставь в «Задачи»");
-    } catch { toast("Не удалось скопировать"); }
+  function askClaude() {
+    openInClaude(CLAUDE_PROMPT + thoughts.map((n) => "- " + n.text).join("\n"));
+    toast("Ответ Claude вставь в «Задачи»");
   }
   async function toTask(id: string, title: string) {
     if ((await addTasks([{ title, project: "Личное", due: addDays(today, 1), time: null }])).length) {
@@ -44,11 +43,11 @@ export default function Thoughts() {
         <section className="panel" style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 240px" }}>
             <b>Разложить всё автоматически</b>
-            <div className="sub" style={{ fontSize: 12 }}>{ai ? "Claude решит, что задача, что заметка проекта, а что идея для контента" : "Пока без ключа Claude: скопируй мысли, отправь Claude в чате, а готовый список вставь в «Задачи»"}</div>
+            <div className="sub" style={{ fontSize: 12 }}>{ai ? "Claude решит, что задача, что заметка проекта, а что идея для контента" : "Откроется Claude с твоими мыслями, а готовый список вставь в «Задачи»"}</div>
           </div>
           {ai
             ? <button className="btn pri" disabled={busy} onClick={sort}>{busy ? "Раскладываю…" : "Разложить с Claude"}</button>
-            : <><button className="btn pri" onClick={copyForClaude}>Скопировать для Claude</button><button className="btn" disabled title="Заработает после подключения ключа Claude">Разложить с Claude</button></>}
+            : <button className="btn pri" onClick={askClaude}>Разобрать в Claude ↗</button>}
         </section>
       )}
       {sorted && sorted.length > 0 && (

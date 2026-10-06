@@ -4,6 +4,7 @@ import { useApp } from "@/components/store";
 import { TaskRow } from "@/components/TaskRow";
 import { diffDays, fd } from "@/lib/dates";
 import { CLAUDE_PROMPT, parseLines } from "@/lib/parseLines";
+import { openInClaude } from "@/lib/openInClaude";
 import { prepareFiles } from "@/lib/files";
 import type { NewTask, Task } from "@/lib/types";
 
@@ -48,9 +49,9 @@ export default function Tasks() {
     setPreview(out);
   }
 
-  async function copyPrompt(text: string) {
-    try { await navigator.clipboard.writeText(text); toast("Скопировано: вставь в Claude, добавь расшифровку, а ответ вставь сюда"); }
-    catch { toast("Не удалось скопировать"); }
+  function askClaude() {
+    openInClaude(CLAUDE_PROMPT);
+    toast("Добавь в Claude расшифровку, а его ответ вставь сюда");
   }
 
   async function confirm() {
@@ -80,7 +81,7 @@ export default function Tasks() {
             📎<input type="file" multiple accept="image/*,.pdf,.txt,.md,.csv,.json" hidden onChange={(e) => { setFiles([...files, ...Array.from(e.target.files ?? [])].slice(0, 5)); e.target.value = ""; }} />
           </label>
           <span className="sub" style={{ fontSize: 12, flex: 1 }}>{ai ? "Claude сам проставит проект, дату и время" : "Одна задача на строку: «завтра 15:00 #Клиенты Отправить договор». Без даты задача ставится на завтра"}</span>
-          {!ai && <button className="btn" type="button" title="Скопировать текст, который нужно отправить Claude вместе с расшифровкой" onClick={() => copyPrompt(CLAUDE_PROMPT)}>Подсказка для Claude</button>}
+          {!ai && <button className="btn" type="button" title="Откроет Claude с готовым запросом: останется добавить расшифровку" onClick={askClaude}>Открыть в Claude ↗</button>}
           <button className="btn pri" type="button" disabled={busy} onClick={add}>{busy ? "Разбираю…" : "Добавить"}</button>
         </div>
         {preview && (
