@@ -24,4 +24,12 @@ export interface Store {
   signUpload(path: string): Promise<string>;
   signDownload(path: string, name: string): Promise<string>;
   setSetting<K extends SettingKey>(key: K, value: Settings[K]): Promise<void>;
+  // Push: the owner's devices, and a log so each reminder goes out once.
+  listPushSubs(): Promise<PushSub[]>;
+  savePushSub(sub: PushSub): Promise<void>;
+  removePushSub(endpoint: string): Promise<void>;
+  /** Records that a reminder was sent; false when it already was (another run got there first). */
+  markSent(key: string): Promise<boolean>;
 }
+
+export interface PushSub { endpoint: string; p256dh: string; auth: string; device: string }

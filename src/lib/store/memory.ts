@@ -1,10 +1,10 @@
 import { addDays, todayISO } from "../dates";
 import { SCHEMAS, TABLES, type Day, type Records, type Settings, type SettingKey, type Table } from "../records";
 import type { Idea, NewTask, Platform, Task, TaskPatch, Thought } from "../types";
-import type { Store } from "./types";
+import type { PushSub, Store } from "./types";
 
 // Demo store: lives in server memory, resets on restart. Used when Supabase is not configured.
-interface Data { tasks: Task[]; thoughts: Thought[]; rec: Records; settings: Partial<Settings> }
+interface Data { tasks: Task[]; thoughts: Thought[]; rec: Records; settings: Partial<Settings>; push: PushSub[]; sent: Set<string> }
 
 const g = globalThis as unknown as { __msDemo?: Data; __msBlobs?: Map<string, { data: ArrayBuffer; type: string }> };
 
@@ -34,6 +34,8 @@ function seed(): Data {
     ],
     rec,
     settings: {},
+    push: [],
+    sent: new Set(),
   };
 }
 
@@ -127,6 +129,14 @@ export const memoryStore: Store = {
   async signDownload(path: string, name: string) { return `/api/files/blob?path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`; },
   async getSettings() { return { ...db().settings }; },
   async setSetting<K extends SettingKey>(key: K, value: Settings[K]) { db().settings[key] = value; },
+  async listPushSubs() { return [...db().push]; },
+  async savePushSub(sub: PushSub) { db().push = [...db().push.filter((x) => x.endpoint !== sub.endpoint), sub]; },
+  async removePushSub(endpoint: string) { db().push = db().push.filter((x) => x.endpoint !== endpoint); },
+  async markSent(key: string) {
+    if (db().sent.has(key)) return false;
+    db().sent.add(key);
+    return true;
+  },
 };
 
 function seedRecords(t: string, now: string): Records {
