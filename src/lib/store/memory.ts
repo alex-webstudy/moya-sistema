@@ -16,6 +16,8 @@ function seed(): Data {
   });
   const rec = seedRecords(t, now);
   const goal = rec.goals[0].id;
+  const forma = rec.folders.find((f) => f.name === "Пример: Студия «Форма»")!.id;
+  const inForma = (x: Task, done_at: string | null = null): Task => ({ ...x, folder_id: forma, done_at });
   const step = (title: string, due: number, done = false): Task => ({ ...task(title, "Личное", due, null, done), goal_id: goal });
   return {
     tasks: [
@@ -23,7 +25,9 @@ function seed(): Data {
       step("Настроить автоперевод 10% с прихода", 4),
       task("Обновить доступы к хостингу у «Ромашки»", "Клиенты", -1, null),
       task("Смонтировать рилс про возражения", "Instagram", 0, "11:00"),
-      task("Отправить договор «Студия Форма»", "Клиенты", 0, "15:00"),
+      inForma(task("Отправить договор «Студия Форма»", "Клиенты", 0, "15:00")),
+      inForma(task("Собрать прототип главной", "Клиенты", -5, null, true), addDays(t, -5) + "T12:00:00Z"),
+      inForma(task("Согласовать структуру сайта", "Клиенты", -12, null, true), addDays(t, -12) + "T12:00:00Z"),
       task("Записать урок 4 курса", "Курсы", 0, "09:30", true),
       task("Написать описание к ролику с таймкодами", "YouTube", 1, "10:00"),
       task("Созвон с Ириной, разбор воронки", "Клиенты", 3, "12:00"),
@@ -48,7 +52,7 @@ export const memoryStore: Store = {
   async listTasks() { return [...db().tasks]; },
   async addTasks(items: NewTask[]) {
     const now = new Date().toISOString();
-    const out = items.map((x) => ({ ...x, goal_id: x.goal_id ?? null, id: crypto.randomUUID(), done: false, created_at: now }));
+    const out = items.map((x) => ({ ...x, goal_id: x.goal_id ?? null, folder_id: x.folder_id ?? null, done_at: null, id: crypto.randomUUID(), done: false, created_at: now }));
     db().tasks.push(...out);
     return out;
   },
@@ -101,6 +105,7 @@ export const memoryStore: Store = {
       rec.folders = rec.folders.filter((f) => !gone.has(f.id));
       rec.notes = rec.notes.filter((n) => !n.folder_id || !gone.has(n.folder_id));
       rec.meetings.forEach((m) => { if (m.folder_id && gone.has(m.folder_id)) m.folder_id = null; });
+      db().tasks.forEach((x) => { if (x.folder_id && gone.has(x.folder_id)) x.folder_id = null; });
       return;
     }
     if (table === "files" || table === "clients" || table === "invoices") {
@@ -153,6 +158,7 @@ function seedRecords(t: string, now: string): Records {
   folder("Telegram", "Telegram", blog.id);
   folder("Курсы", "Курсы");
   const cl = folder("Клиентские проекты", "Клиенты");
+  folder("Пример: Студия «Форма»", null, cl.id);
   folder("Личное", "Личное");
   rec.notes.push(row({ folder_id: blog.id, project: null, text: "Пример заметки: рубрики по дням недели" }));
   const c = (name: string, work: string, contract: number, sum: number, due: number | null, paid: boolean, last: number, waiting = "", extra = {}) =>

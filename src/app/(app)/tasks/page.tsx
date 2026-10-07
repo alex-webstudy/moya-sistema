@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useApp } from "@/components/store";
-import { TaskRow } from "@/components/TaskRow";
+import { PlaceSelect, TaskRow } from "@/components/TaskRow";
+import { fromPlace, placeLabel, subtree } from "@/lib/folders";
 import { diffDays, fd } from "@/lib/dates";
 import { CLAUDE_PROMPT, parseLines } from "@/lib/parseLines";
 import { openInClaude } from "@/lib/openInClaude";
@@ -11,8 +12,10 @@ import type { NewTask, Task } from "@/lib/types";
 type Filter = "today" | "week" | "all" | "done";
 
 export default function Tasks() {
-  const { tasks, today, ai, addTasks, dictate, toast } = useApp();
+  const { tasks, rec, today, ai, addTasks, dictate, toast } = useApp();
   const [filter, setFilter] = useState<Filter>("today");
+  // "" every project, "p:<section>" or "f:<folder id>" (with its subfolders).
+  const [place, setPlace] = useState("");
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<NewTask[] | null>(null);
@@ -24,8 +27,11 @@ export default function Tasks() {
     all: ["Все открытые", (t) => !t.done],
     done: ["Выполнено", (t) => t.done],
   };
-  const list = tasks.filter(F[filter][1]).sort((a, b) => a.due.localeCompare(b.due) || (a.time ?? "99").localeCompare(b.time ?? "99"));
-  const done = tasks.filter((t) => t.done).length;
+  const tree = place.startsWith("f:") ? subtree(rec.folders, place.slice(2)) : null;
+  const inPlace = (t: Task) => !place || (tree ? !!t.folder_id && tree.has(t.folder_id) : t.project === place.slice(2));
+  const mine = tasks.filter(inPlace);
+  const list = mine.filter(F[filter][1]).sort((a, b) => a.due.localeCompare(b.due) || (a.time ?? "99").localeCompare(b.time ?? "99"));
+  const done = mine.filter((t) => t.done).length;
 
   async function add() {
     const t = text.trim();
@@ -56,7 +62,9 @@ export default function Tasks() {
 
   async function confirm() {
     if (!preview) return;
-    if ((await addTasks(preview)).length) {
+    // With a project folder picked below, new tasks go into it.
+    const items = place.startsWith("f:") ? preview.map((t) => ({ ...t, ...fromPlace(rec.folders, place, t.project) })) : preview;
+    if ((await addTasks(items)).length) {
       toast("Добавлено задач: " + preview.length);
       setPreview(null); setText(""); setFiles([]);
     }
@@ -64,7 +72,7 @@ export default function Tasks() {
 
   return (
     <>
-      <div className="head"><div><h1>Задачи</h1><div className="sub">Выполнено {done} из {tasks.length}</div></div></div>
+      <div className="head"><div><h1>Задачи</h1><div className="sub">Выполнено {done} из {mine.length}</div></div></div>
       <section className="capture" style={{ marginBottom: 16 }}>
         <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Новая задача или сразу несколько. Можно надиктовать: «завтра в 10 созвон с Ириной, в пятницу отправить счёт Северу». Или прикрепи скриншот переписки, файл с правками" />
         {files.length > 0 && (
@@ -89,7 +97,7 @@ export default function Tasks() {
             <div className="list" style={{ marginTop: 4 }}>
               {preview.map((t, i) => (
                 <div className="row" key={i}>
-                  <div className="t"><b>{t.title}</b><span>{t.project} · {fd(t.due, today)}{t.time ? " · " + t.time : ""}</span></div>
+                  <div className="t"><b>{t.title}</b><span>{place.startsWith("f:") ? placeLabel(rec.folders, fromPlace(rec.folders, place, t.project)) : t.project} · {fd(t.due, today)}{t.time ? " · " + t.time : ""}</span></div>
                   <button className="mini" onClick={() => setPreview(preview.filter((_, j) => j !== i))}>убрать</button>
                 </div>
               ))}
@@ -101,10 +109,11 @@ export default function Tasks() {
           </>
         )}
       </section>
-      <div className="tabs">
+      <div className="tabs" style={{ alignItems: "center", flexWrap: "wrap" }}>
         {(Object.keys(F) as Filter[]).map((k) => (
-          <button key={k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>{F[k][0]} · {tasks.filter(F[k][1]).length}</button>
+          <button key={k} className={filter === k ? "on" : ""} onClick={() => setFilter(k)}>{F[k][0]} · {mine.filter(F[k][1]).length}</button>
         ))}
+        <span style={{ marginLeft: "auto", minWidth: 180 }}><PlaceSelect value={place} onChange={setPlace} all="Все проекты" label="Показать задачи проекта" /></span>
       </div>
       <section className="panel">
         <div className="list">{list.length ? list.map((t) => <TaskRow key={t.id} t={t} actions />) : <div className="sub" style={{ padding: "10px 0" }}>Здесь пусто</div>}</div>

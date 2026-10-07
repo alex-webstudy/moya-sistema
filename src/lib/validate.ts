@@ -19,6 +19,7 @@ export function toNewTask(x: unknown, fallbackDue: string): NewTask | null {
     due: isISODate(o.due) ? o.due : fallbackDue,
     time: isTime(o.time) ? o.time : null,
     ...(typeof o.goal_id === "string" && UUID.test(o.goal_id) ? { goal_id: o.goal_id } : {}),
+    ...(typeof o.folder_id === "string" && UUID.test(o.folder_id) ? { folder_id: o.folder_id } : {}),
   };
 }
 
@@ -29,7 +30,11 @@ export function toTaskPatch(x: unknown): TaskPatch {
   if ("project" in o) p.project = normProject(o.project);
   if ("due" in o && isISODate(o.due)) p.due = o.due;
   if ("time" in o) p.time = isTime(o.time) ? o.time : null;
-  if ("done" in o && typeof o.done === "boolean") p.done = o.done;
+  if ("done" in o && typeof o.done === "boolean") {
+    p.done = o.done;
+    p.done_at = o.done ? new Date().toISOString() : null;
+  }
+  if ("folder_id" in o) p.folder_id = typeof o.folder_id === "string" && UUID.test(o.folder_id) ? o.folder_id : null;
   return p;
 }
 

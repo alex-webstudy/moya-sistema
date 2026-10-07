@@ -306,3 +306,5 @@ dialog.answer{border:1px solid var(--line);border-radius:var(--r);background:var
 dialog.answer::backdrop{background:rgb(0 0 0/.45)}
 .answer-b{white-space:pre-wrap;font-size:14px;line-height:1.5;overflow:auto;max-height:calc(100dvh - 160px);margin-bottom:14px}
 dialog.answer .acts{display:flex;gap:8px;justify-content:flex-end}
+.ev.off{opacity:.55}
+.ev.off span:not(.tm),.t1.off{color:var(--faint);text-decoration:line-through}

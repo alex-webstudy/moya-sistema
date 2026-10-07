@@ -9,6 +9,8 @@ export interface Task {
   time: string | null; // HH:MM
   done: boolean;
   goal_id?: string | null; // a step of a goal
+  folder_id?: string | null; // a specific project folder, e.g. one client
+  done_at?: string | null;
   created_at: string;
 }
 
@@ -36,7 +38,7 @@ export interface Idea {
   created_at: string;
 }
 
-export type NewTask = Pick<Task, "title" | "project" | "due" | "time"> & { goal_id?: string | null };
-export type TaskPatch = Partial<Pick<Task, "title" | "project" | "due" | "time" | "done">>;
+export type NewTask = Pick<Task, "title" | "project" | "due" | "time"> & { goal_id?: string | null; folder_id?: string | null };
+export type TaskPatch = Partial<Pick<Task, "title" | "project" | "due" | "time" | "done" | "folder_id" | "done_at">>;
 
 export type Training = { days: number[]; start: string; end: string }; // days: 0 = Sunday

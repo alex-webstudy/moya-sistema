@@ -11,7 +11,8 @@ import { rub } from "@/lib/money";
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 export default function Today() {
-  const { tasks, thoughts, today, settings, rec } = useApp();
+  const app = useApp();
+  const { tasks, thoughts, today, settings, rec } = app;
   const focus = rec.weeks.find((w) => w.week === monday(today))?.focus ?? [];
   const h = new Date().getHours();
   const greet = h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
@@ -58,7 +59,7 @@ export default function Today() {
           <div className="list">
             {[1, 2, 3].map((n) => {
               const day = addDays(today, n);
-              const ev = eventsOn(day, tasks, settings.training);
+              const ev = eventsOn(day, app);
               return (
                 <div className="row" style={{ alignItems: "flex-start" }} key={day}>
                   <div style={{ width: 72, flex: "none", fontWeight: 600 }}>{cap(fd(day, today))}</div>
@@ -67,7 +68,7 @@ export default function Today() {
                       <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", fontSize: 13 }}>
                         <span className="dot" style={{ background: e.color, flex: "none", transform: "translateY(-2px)" }} />
                         <span className="amt" style={{ color: "var(--muted)", width: 40, flex: "none" }}>{e.time}</span>
-                        <span style={{ minWidth: 0 }}>{e.title}</span>
+                        <span style={{ minWidth: 0, ...(e.done ? { color: "var(--faint)", textDecoration: "line-through" } : {}) }}>{e.title}</span>
                       </div>
                     )) : <span>свободно</span>}
                     {ev.length > 4 && <span>ещё {ev.length - 4}</span>}
