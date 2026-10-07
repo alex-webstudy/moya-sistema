@@ -12,6 +12,8 @@ const sb = () =>
     auth: { persistSession: false, autoRefreshToken: false },
   }));
 
+const BUCKET = "docs";
+
 function check<T>(r: { data: T | null; error: { message: string } | null }): T {
   if (r.error) throw new Error(r.error.message);
   return r.data as T;
@@ -60,12 +62,22 @@ export const supabaseStore: Store = {
     return rows[0] ?? null;
   },
   async remove(table: Table, id: string) {
+    // Deleting a client, an invoice or a file row also deletes the stored files it owns.
+    const col = { files: "id", clients: "client_id", invoices: "invoice_id" }[table as string];
+    const paths = col ? (check(await sb().from("files").select("path").eq(col, id)) as { path: string }[]).map((f) => f.path) : [];
     check(await sb().from(table).delete().eq("id", id));
+    if (paths.length) await sb().storage.from(BUCKET).remove(paths);
   },
   async upsertDay(date: string, patch: object) {
     // On conflict only the sent columns are updated, so fields set elsewhere survive.
     const rows = check(await sb().from("days").upsert({ ...patch, date }, { onConflict: "date" }).select()) as Day[];
     return rows[0];
+  },
+  async signUpload(path: string) {
+    return check(await sb().storage.from(BUCKET).createSignedUploadUrl(path)).signedUrl;
+  },
+  async signDownload(path: string, name: string) {
+    return check(await sb().storage.from(BUCKET).createSignedUrl(path, 60, { download: name })).signedUrl;
   },
   async getSettings() {
     const rows = check(await sb().from("settings").select("id, value")) as { id: string; value: unknown }[];

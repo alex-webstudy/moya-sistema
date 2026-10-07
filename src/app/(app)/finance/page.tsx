@@ -6,6 +6,7 @@ import { ClaudeBtn, CurSelect, Empty, Fold } from "@/components/ui";
 import { fd, MONN } from "@/lib/dates";
 import { chargeNext, dueThisMonth, monthKey, nextTaxDate, paymentsLeft, prevCharge, rub, toUZS, type Cur } from "@/lib/money";
 import { FIN_PROMPT, TAX_PROMPT } from "@/lib/prompts";
+import { invoiceState, paidOn } from "@/lib/accounting";
 import type { Charge, Debt } from "@/lib/records";
 
 type Folder = "ai" | "inc" | "card" | "tax" | "credit" | "sub" | "debt";
@@ -105,15 +106,32 @@ function Review() {
 }
 
 function IncomePanel({ account }: { account: "rs" | "card" }) {
-  const { rec, settings, today, addRec, removeRec, toast } = useApp();
+  const { rec, settings, today, addRec, patchRec, removeRec, toast } = useApp();
   const [from, setFrom] = useState("");
+  const [inv, setInv] = useState("");
   const [other, setOther] = useState("");
   const [note, setNote] = useState("");
   const [sum, setSum] = useState("");
   const [cur, setCur] = useState<Cur>("uzs");
   const [date, setDate] = useState(today);
   const list = rec.income.filter((i) => (i.account ?? "rs") === account);
+  // The client's invoices still waiting for money, oldest first: income recorded here pays them.
+  const open = (id: string) => rec.invoices.filter((i) => i.client_id === id && invoiceState(i, rec.income) !== "paid")
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const opens = from ? open(from) : [];
+  const invNo = (id: string | null) => rec.invoices.find((i) => i.id === id)?.no;
 
+  function pick(id: string) {
+    setFrom(id);
+    const first = id ? open(id)[0] : undefined;
+    setInv(first?.id ?? "");
+    if (first) { setSum(String(first.sum - paidOn(first, rec.income))); setCur("uzs"); }
+  }
+  function pickInv(id: string) {
+    setInv(id);
+    const i = rec.invoices.find((x) => x.id === id);
+    if (i) { setSum(String(i.sum - paidOn(i, rec.income))); setCur("uzs"); }
+  }
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const client = rec.clients.find((c) => c.id === from);
@@ -121,20 +139,30 @@ function IncomePanel({ account }: { account: "rs" | "card" }) {
     if (!source) return toast("Укажи, от кого пришло");
     if (num(sum) <= 0) return toast("Укажи сумму");
     const m = toUZS(num(sum), cur, settings.rates);
-    if ((await addRec("income", [{ date, source, note: note.trim(), ...m, client_id: client?.id ?? null, account }])).length) {
-      setSum(""); setNote(""); setOther("");
-      toast("Поступление записано");
+    const invoice = client ? rec.invoices.find((i) => i.id === inv && i.client_id === client.id) : undefined;
+    const n = note.trim() || (invoice ? `счёт-фактура №${invoice.no}` : "");
+    if ((await addRec("income", [{ date, source, note: n, ...m, client_id: client?.id ?? null, invoice_id: invoice?.id ?? null, account }])).length) {
+      // A one-off client without invoices: the money closes the deal.
+      if (client && !invoice && !client.pay_day && !client.paid) await patchRec("clients", client.id, { paid: true });
+      setSum(""); setNote(""); setOther(""); setFrom(""); setInv("");
+      toast(invoice ? `Счёт №${invoice.no}: оплата отмечена у клиента` : "Поступление записано");
     }
   }
   return (
     <section className="panel">
       <h2>{account === "rs" ? "Поступления на расчётный счёт" : "Поступления на карту"}</h2>
       <form className="addbar" onSubmit={add}>
-        <select className="input" style={{ flex: "1 1 160px" }} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="От кого">
+        <select className="input" style={{ flex: "1 1 160px" }} value={from} onChange={(e) => pick(e.target.value)} aria-label="От кого">
           <option value="">Другое…</option>
           {rec.clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {!from && <input className="input" placeholder="От кого" value={other} onChange={(e) => setOther(e.target.value)} style={{ flex: "1 1 140px" }} />}
+        {opens.length > 0 && (
+          <select className="input" style={{ flex: "1 1 160px" }} value={inv} onChange={(e) => pickInv(e.target.value)} aria-label="По какому счёту">
+            {opens.map((i) => <option key={i.id} value={i.id}>Счёт №{i.no} · {rub(i.sum - paidOn(i, rec.income))}</option>)}
+            <option value="">Без счёта</option>
+          </select>
+        )}
         <input className="input" placeholder="За что" value={note} onChange={(e) => setNote(e.target.value)} style={{ flex: "1 1 120px" }} />
         <input className="input" inputMode="decimal" placeholder="Сумма" value={sum} onChange={(e) => setSum(e.target.value)} style={{ flex: "0 1 120px" }} />
         <CurSelect value={cur} onChange={setCur} />
@@ -144,13 +172,13 @@ function IncomePanel({ account }: { account: "rs" | "card" }) {
       <div className="list">
         {list.length ? [...list].sort((a, b) => b.date.localeCompare(a.date)).map((i) => (
           <div className="row" key={i.id}>
-            <div className="t"><b>{i.source}</b><span>{i.note ? i.note + " · " : ""}{fd(i.date, today)}{i.orig ? " · " + i.orig : ""}</span></div>
+            <div className="t"><b>{i.source}</b><span>{i.note ? i.note + " · " : invNo(i.invoice_id) ? `счёт №${invNo(i.invoice_id)} · ` : ""}{fd(i.date, today)}{i.orig ? " · " + i.orig : ""}</span></div>
             <span className="amt" style={{ color: "var(--ok)" }}>+{rub(i.sum)}</span>
             <button className="mini" aria-label="Удалить" onClick={() => removeRec("income", i.id)}>✕</button>
           </div>
         )) : <Empty>Пока нет поступлений</Empty>}
       </div>
-      <div className="sub" style={{ fontSize: 12, marginTop: 8 }}>{account === "rs" ? "С них считается налог 1%. Оплата, отмеченная в «Клиентах», попадает сюда сама" : "Налог с карты не считается"}</div>
+      <div className="sub" style={{ fontSize: 12, marginTop: 8 }}>{account === "rs" ? "С них считается налог 1%. Выбери клиента и счёт: у клиента он сразу станет оплаченным. «Оплачено» в «Клиентах» тоже попадает сюда" : "Налог с карты не считается"}</div>
     </section>
   );
 }

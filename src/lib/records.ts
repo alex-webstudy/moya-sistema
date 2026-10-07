@@ -27,6 +27,29 @@ export const SCHEMAS = {
     paid: z.boolean().default(false),
     last_contact: date,
     waiting: text(300).default(""),
+    // Contract: number and term; pay_day set means a monthly payment of `sum` on that day.
+    contract_no: text(60).default(""),
+    contract_from: date.nullable().default(null),
+    contract_until: date.nullable().default(null),
+    pay_day: z.number().int().min(1).max(31).nullable().default(null),
+  }),
+  // Invoices (счета-фактуры) issued to a client; paid by income rows that point at them.
+  invoices: z.object({
+    client_id: uuid,
+    no: name(40),
+    date,
+    sum: money.min(1),
+    note: text(300).default(""),
+  }),
+  // Contract and invoice files in private storage; `path` is set by the server when it signs the upload.
+  files: z.object({
+    client_id: uuid,
+    invoice_id: uuid.nullable().default(null),
+    kind: z.enum(["contract", "invoice", "other"]).default("other"),
+    name: name(255),
+    path: z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z0-9]{1,8}$/),
+    size: z.number().int().min(0).max(50 * 1024 * 1024),
+    type: text(120).default(""),
   }),
   meetings: z.object({
     title: name(200),
@@ -46,6 +69,7 @@ export const SCHEMAS = {
     client_id: uuid.nullable().default(null),
     // "rs": the ИП settlement account (taxed 1%); "card": personal card.
     account: z.enum(["rs", "card"]).default("rs"),
+    invoice_id: uuid.nullable().default(null),
   }),
   charges: z.object({
     type: z.enum(["credit", "sub"]),
@@ -167,6 +191,8 @@ export type Income = Row<"income">;
 export type Charge = Row<"charges">;
 export type Debt = Row<"debts">;
 export type Tax = Row<"taxes">;
+export type Invoice = Row<"invoices">;
+export type FileRow = Row<"files">;
 export type Day = Row<"days">;
 export type Measure = Row<"measures">;
 export type ListItem = Row<"list_items">;

@@ -6,7 +6,7 @@ import type { Store } from "./types";
 // Demo store: lives in server memory, resets on restart. Used when Supabase is not configured.
 interface Data { tasks: Task[]; thoughts: Thought[]; rec: Records; settings: Partial<Settings> }
 
-const g = globalThis as unknown as { __msDemo?: Data };
+const g = globalThis as unknown as { __msDemo?: Data; __msBlobs?: Map<string, { data: ArrayBuffer; type: string }> };
 
 function seed(): Data {
   const t = todayISO();
@@ -38,6 +38,8 @@ function seed(): Data {
 }
 
 const db = () => (g.__msDemo ??= seed());
+/** Demo file bytes, kept in memory like everything else in demo mode. */
+export const blobs = () => (g.__msBlobs ??= new Map());
 
 export const memoryStore: Store = {
   demo: true,
@@ -99,6 +101,14 @@ export const memoryStore: Store = {
       rec.meetings.forEach((m) => { if (m.folder_id && gone.has(m.folder_id)) m.folder_id = null; });
       return;
     }
+    if (table === "files" || table === "clients" || table === "invoices") {
+      const key = table === "files" ? "id" : table === "clients" ? "client_id" : "invoice_id";
+      const gone = rec.files.filter((f) => f[key] === id);
+      gone.forEach((f) => blobs().delete(f.path));
+      rec.files = rec.files.filter((f) => !gone.includes(f));
+      if (table === "clients") rec.invoices = rec.invoices.filter((i) => i.client_id !== id);
+      if (table === "invoices") rec.income.forEach((i) => { if (i.invoice_id === id) i.invoice_id = null; });
+    }
     if (table === "goals") db().tasks.forEach((t) => { if (t.goal_id === id) t.goal_id = null; });
     if (table === "clients") rec.income.forEach((i) => { if (i.client_id === id) i.client_id = null; });
     (rec as Record<Table, { id: string }[]>)[table] = rec[table].filter((x) => x.id !== id);
@@ -113,6 +123,8 @@ export const memoryStore: Store = {
     Object.assign(d, patch);
     return { ...d };
   },
+  async signUpload(path: string) { return `/api/files/blob?path=${encodeURIComponent(path)}`; },
+  async signDownload(path: string, name: string) { return `/api/files/blob?path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`; },
   async getSettings() { return { ...db().settings }; },
   async setSetting<K extends SettingKey>(key: K, value: Settings[K]) { db().settings[key] = value; },
 };
@@ -133,16 +145,25 @@ function seedRecords(t: string, now: string): Records {
   const cl = folder("Клиентские проекты", "Клиенты");
   folder("Личное", "Личное");
   rec.notes.push(row({ folder_id: blog.id, project: null, text: "Пример заметки: рубрики по дням недели" }));
-  const c = (name: string, work: string, contract: number, sum: number, due: number, paid: boolean, last: number, waiting = "") =>
-    row({ name, work, contract, sum, due: addDays(t, due), paid, last_contact: addDays(t, last), waiting });
+  const c = (name: string, work: string, contract: number, sum: number, due: number | null, paid: boolean, last: number, waiting = "", extra = {}) =>
+    row(SCHEMAS.clients.parse({ name, work, contract, sum, due: due === null ? null : addDays(t, due), paid, last_contact: addDays(t, last), waiting, ...extra }));
   rec.clients.push(
     c("Пример: Студия «Форма»", "Сайт + воронка", 0, 25_000_000, 10, false, -1, "Тексты для сайта"),
-    c("Пример: Магазин «Ромашка»", "Поддержка", 2, 5_000_000, -3, false, -9, "Оплата счёта"),
+    c("Пример: Магазин «Ромашка»", "Поддержка сайта", 2, 5_000_000, null, false, -9, "", {
+      contract_no: "12/2026", contract_from: addDays(t, -70), contract_until: addDays(t, 200), pay_day: 10,
+    }),
     c("Пример: Денис", "Консультация", 2, 1_270_000, -6, true, -6),
   );
+  const shop = rec.clients[1].id;
+  rec.invoices.push(
+    row({ client_id: shop, no: "1", date: addDays(t, -40), sum: 5_000_000, note: "" }),
+    row({ client_id: shop, no: "2", date: addDays(t, -10), sum: 5_000_000, note: "" }),
+  );
+  const inc = (x: object) => row(SCHEMAS.income.parse(x));
   rec.income.push(
-    row({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id, account: "rs" as const }),
-    row({ date: addDays(t, -3), source: "Пример: частный заказ", note: "правки сайта", sum: 600_000, orig: "", client_id: null, account: "card" as const }));
+    inc({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id }),
+    inc({ date: addDays(t, -35), source: "Пример: Магазин «Ромашка»", note: "счёт-фактура №1", sum: 5_000_000, client_id: shop, invoice_id: rec.invoices[0].id }),
+    inc({ date: addDays(t, -3), source: "Пример: частный заказ", note: "правки сайта", sum: 600_000, account: "card" }));
   rec.charges.push(
     row({ type: "credit" as const, name: "Пример: автокредит", bank: "Капиталбанк", sum: 2_800_000, day: 8, start: null, until: addDays(t, 300), paid_to: null }),
     row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null, paid_to: null }),

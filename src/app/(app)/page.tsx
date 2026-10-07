@@ -5,6 +5,8 @@ import { TaskRow } from "@/components/TaskRow";
 import { addDays, fd, weekday } from "@/lib/dates";
 import { eventsOn, todayTasks } from "@/lib/events";
 import { monday } from "@/lib/week";
+import { needsInvoice } from "@/lib/accounting";
+import { rub } from "@/lib/money";
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
@@ -16,6 +18,7 @@ export default function Today() {
   const dateStr = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
   const list = todayTasks(tasks, today);
   const open = list.filter((t) => !t.done).length;
+  const toInvoice = rec.clients.filter((c) => needsInvoice(c, rec.invoices, today));
   return (
     <>
       <div className="head">
@@ -32,6 +35,17 @@ export default function Today() {
         <section className="panel" style={{ marginBottom: 16 }}>
           <h2>Главное на неделе <Link className="more" href="/week">Итоги недели →</Link></h2>
           <div className="list">{focus.map((x, i) => <div className="row" key={i}><span className="pill p-acc">{i + 1}</span><div className="t">{x}</div></div>)}</div>
+        </section>
+      )}
+      {toInvoice.length > 0 && (
+        <section className="panel" style={{ marginBottom: 16, borderColor: "var(--warn)" }}>
+          <h2>Выставить счёт-фактуру <Link className="more" href="/clients">Клиенты →</Link></h2>
+          <div className="list">{toInvoice.map((c) => (
+            <Link className="row" key={c.id} href={`/clients?c=${c.id}`}>
+              <div className="t"><b>{c.name}</b><span>{c.contract_no ? `договор №${c.contract_no} · ` : ""}{c.pay_day ? `оплата ${c.pay_day}-го` : ""}</span></div>
+              <span className="amt">{rub(c.sum)}</span>
+            </Link>
+          ))}</div>
         </section>
       )}
       <div className="grid g2">

@@ -20,5 +20,8 @@ export interface Store {
   /** Health day by date: insert or update only the given fields. */
   upsertDay(date: string, patch: object): Promise<Day>;
   getSettings(): Promise<Partial<Settings>>;
+  // Files: the browser uploads straight to storage by a short-lived signed URL and downloads the same way.
+  signUpload(path: string): Promise<string>;
+  signDownload(path: string, name: string): Promise<string>;
   setSetting<K extends SettingKey>(key: K, value: Settings[K]): Promise<void>;
 }
