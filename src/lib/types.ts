@@ -8,6 +8,7 @@ export interface Task {
   due: string; // YYYY-MM-DD
   time: string | null; // HH:MM
   done: boolean;
+  goal_id?: string | null; // a step of a goal
   created_at: string;
 }
 
@@ -35,7 +36,7 @@ export interface Idea {
   created_at: string;
 }
 
-export type NewTask = Pick<Task, "title" | "project" | "due" | "time">;
+export type NewTask = Pick<Task, "title" | "project" | "due" | "time"> & { goal_id?: string | null };
 export type TaskPatch = Partial<Pick<Task, "title" | "project" | "due" | "time" | "done">>;
 
 export type Training = { days: number[]; start: string; end: string }; // days: 0 = Sunday

@@ -137,8 +137,8 @@ function useAppState() {
   const removeRec = useCallback(async (t: Table, id: string) => {
     try {
       await api(`/api/rec/${t}/${id}`, { method: "DELETE" });
-      // Folders cascade on the server (subfolders, notes, meeting links): reload instead of guessing.
-      if (t === "folders") await reload();
+      // Folders cascade on the server (subfolders, notes, meeting links), goals unlink their steps: reload instead of guessing.
+      if (t === "folders" || t === "goals") await reload();
       else setRows(t, (r) => r.filter((x) => x.id !== id));
       return true;
     } catch (e) { fail(e); return false; }
