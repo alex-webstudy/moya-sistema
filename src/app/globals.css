@@ -296,3 +296,8 @@ td.r,th.r{text-align:right}
 .nav{flex:1;min-height:0;overflow-y:auto}
 .nav .ni.later:not(.on){opacity:.8}
 a.btn{color:inherit}
+.fcard .ico{width:26px;height:26px;color:var(--accent);flex:none}
+.fcard.add{border-style:dashed;color:var(--muted);justify-content:center;align-items:center;min-height:96px}
+textarea.input{width:100%;font:inherit;color:var(--fg);resize:vertical;min-height:80px}
+.form{display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px;min-width:0}

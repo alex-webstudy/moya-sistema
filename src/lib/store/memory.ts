@@ -1,6 +1,6 @@
 import { addDays, todayISO } from "../dates";
 import { TABLES, type Records, type Settings, type SettingKey, type Table } from "../records";
-import type { Idea, NewTask, Note, Platform, Task, TaskPatch, Thought } from "../types";
+import type { Idea, NewTask, Platform, Task, TaskPatch, Thought } from "../types";
 import type { Store } from "./types";
 
 // Demo store: lives in server memory, resets on restart. Used when Supabase is not configured.
