@@ -3,13 +3,13 @@ import { useState } from "react";
 import { useApp } from "@/components/store";
 import { PlaceSelect, TaskRow } from "@/components/TaskRow";
 import { fromPlace, placeLabel, subtree } from "@/lib/folders";
-import { diffDays, fd } from "@/lib/dates";
+import { byDue, diffDays, fdue } from "@/lib/dates";
 import { CLAUDE_PROMPT, parseLines } from "@/lib/parseLines";
 import { openInClaude } from "@/lib/openInClaude";
 import { prepareFiles } from "@/lib/files";
 import type { NewTask, Task } from "@/lib/types";
 
-type Filter = "today" | "week" | "all" | "done";
+type Filter = "today" | "week" | "nodate" | "all" | "done";
 
 export default function Tasks() {
   const { tasks, rec, today, ai, addTasks, dictate, toast } = useApp();
@@ -22,15 +22,16 @@ export default function Tasks() {
   const [busy, setBusy] = useState(false);
 
   const F: Record<Filter, [string, (t: Task) => boolean]> = {
-    today: ["Сегодня", (t) => !t.done && diffDays(t.due, today) <= 0],
-    week: ["Неделя", (t) => !t.done && diffDays(t.due, today) <= 7],
+    today: ["Сегодня", (t) => !t.done && !!t.due && diffDays(t.due, today) <= 0],
+    week: ["Неделя", (t) => !t.done && !!t.due && diffDays(t.due, today) <= 7],
+    nodate: ["Без срока", (t) => !t.done && !t.due],
     all: ["Все открытые", (t) => !t.done],
     done: ["Выполнено", (t) => t.done],
   };
   const tree = place.startsWith("f:") ? subtree(rec.folders, place.slice(2)) : null;
   const inPlace = (t: Task) => !place || (tree ? !!t.folder_id && tree.has(t.folder_id) : t.project === place.slice(2));
   const mine = tasks.filter(inPlace);
-  const list = mine.filter(F[filter][1]).sort((a, b) => a.due.localeCompare(b.due) || (a.time ?? "99").localeCompare(b.time ?? "99"));
+  const list = mine.filter(F[filter][1]).sort((a, b) => byDue(a, b) || (a.time ?? "99").localeCompare(b.time ?? "99"));
   const done = mine.filter((t) => t.done).length;
 
   async function add() {
@@ -88,7 +89,7 @@ export default function Tasks() {
           <label className="btn" style={{ cursor: "pointer" }} title="Скриншот или файл">
             📎<input type="file" multiple accept="image/*,.pdf,.txt,.md,.csv,.json" hidden onChange={(e) => { setFiles([...files, ...Array.from(e.target.files ?? [])].slice(0, 5)); e.target.value = ""; }} />
           </label>
-          <span className="sub" style={{ fontSize: 12, flex: 1 }}>{ai ? "Claude сам проставит проект, дату и время" : "Одна задача на строку: «завтра 15:00 #Клиенты Отправить договор». Без даты задача ставится на завтра"}</span>
+          <span className="sub" style={{ fontSize: 12, flex: 1 }}>{ai ? "Claude сам проставит проект, дату и время" : "Одна задача на строку: «завтра 15:00 #Клиенты Отправить договор». Без даты задача будет без срока"}</span>
           {!ai && <button className="btn" type="button" title="Откроет Claude с готовым запросом: останется добавить расшифровку" onClick={askClaude}>Открыть в Claude ↗</button>}
           <button className="btn pri" type="button" disabled={busy} onClick={add}>{busy ? "Разбираю…" : "Добавить"}</button>
         </div>
@@ -97,7 +98,7 @@ export default function Tasks() {
             <div className="list" style={{ marginTop: 4 }}>
               {preview.map((t, i) => (
                 <div className="row" key={i}>
-                  <div className="t"><b>{t.title}</b><span>{place.startsWith("f:") ? placeLabel(rec.folders, fromPlace(rec.folders, place, t.project)) : t.project} · {fd(t.due, today)}{t.time ? " · " + t.time : ""}</span></div>
+                  <div className="t"><b>{t.title}</b><span>{place.startsWith("f:") ? placeLabel(rec.folders, fromPlace(rec.folders, place, t.project)) : t.project} · {fdue(t.due, today)}{t.time ? " · " + t.time : ""}</span></div>
                   <button className="mini" onClick={() => setPreview(preview.filter((_, j) => j !== i))}>убрать</button>
                 </div>
               ))}

@@ -65,7 +65,7 @@ function readProject(line: string): [string | null, string] {
 }
 
 /** Parse one line; returns null for empty lines and headings like «Задачи:». */
-export function parseLine(raw: string, today: string, fallbackDue: string): NewTask | null {
+export function parseLine(raw: string, today: string, fallbackDue: string | null = null): NewTask | null {
   let line = raw.trim().replace(/^(?:[-•*–—]|\d+[.)](?=\s)|\[\s?[xх ]?\])\s*/iu, "").trim();
   if (!line || /:$/.test(line)) return null;
 
@@ -86,15 +86,14 @@ export function parseLine(raw: string, today: string, fallbackDue: string): NewT
 }
 
 export function parseLines(text: string, today: string): NewTask[] {
-  const fallback = addDays(today, 1);
-  return text.split("\n").map((l) => parseLine(l, today, fallback)).filter((t): t is NewTask => t !== null);
+  return text.split("\n").map((l) => parseLine(l, today)).filter((t): t is NewTask => t !== null);
 }
 
 /** Prompt the owner pastes into the Claude app together with a transcript or thoughts. */
 export const CLAUDE_PROMPT = `Разбери текст ниже на задачи. Выведи только список, одна задача на строку, без пояснений, в формате:
 дата | время | проект | задача
 
-- дата: сегодня, завтра, день недели (пн, вт, ср, чт, пт, сб, вс) или ДД.ММ
+- дата: сегодня, завтра, день недели (пн, вт, ср, чт, пт, сб, вс) или ДД.ММ; пусто, если срока нет
 - время: ЧЧ:ММ или пусто, если не названо
 - проект: один из ${PROJECTS.join(", ")}
 - задача: коротко, начиная с глагола

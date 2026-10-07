@@ -5,7 +5,7 @@ export interface Task {
   id: string;
   title: string;
   project: Project;
-  due: string; // YYYY-MM-DD
+  due: string | null; // YYYY-MM-DD; null: no deadline
   time: string | null; // HH:MM
   done: boolean;
   goal_id?: string | null; // a step of a goal

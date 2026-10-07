@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { AIError, dictateToTasks, type Upload } from "@/lib/ai";
-import { addDays, todayISO } from "@/lib/dates";
 import { fail, unauthorized } from "@/lib/guard";
 import { toNewTask } from "@/lib/validate";
 import type { NewTask } from "@/lib/types";
@@ -24,8 +23,7 @@ export async function POST(req: Request) {
       .filter((d): d is { name: string; text: string } => typeof d?.text === "string")
       .map((d) => ({ name: String(d.name || "файл").slice(0, 100), text: d.text.slice(0, 20000) }));
     if (!text.trim() && !uploads.length && !docs.length) return NextResponse.json({ error: "Надиктуй задачи или прикрепи скриншот" }, { status: 400 });
-    const fallback = addDays(todayISO(), 1);
-    const tasks = (await dictateToTasks(text, uploads, docs)).map((t) => toNewTask(t, fallback)).filter((t): t is NewTask => !!t);
+    const tasks = (await dictateToTasks(text, uploads, docs)).map((t) => toNewTask(t)).filter((t): t is NewTask => !!t);
     return NextResponse.json({ tasks });
   } catch (e) {
     return e instanceof AIError ? fail(e, e.status) : fail(e);

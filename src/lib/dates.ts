@@ -65,3 +65,8 @@ export function monthGrid(s: string, offset = 0): { year: number; month: number;
 
 export const dayNum = (s: string) => parse(s).getUTCDate();
 export const monthOf = (s: string) => parse(s).getUTCMonth();
+
+/** A task's deadline for display: «без срока» when it has none. */
+export const fdue = (due: string | null, today: string) => (due ? fd(due, today) : "без срока");
+/** Sort by deadline; tasks without one go last. */
+export const byDue = (a: { due: string | null }, b: { due: string | null }) => (a.due ?? "9999").localeCompare(b.due ?? "9999");

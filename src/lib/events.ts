@@ -1,5 +1,5 @@
 import { activeNow, payDate } from "./accounting";
-import { weekday } from "./dates";
+import { byDue, weekday } from "./dates";
 import { nextCharge, rub } from "./money";
 import type { Records } from "./records";
 import type { Task, Training } from "./types";
@@ -63,6 +63,6 @@ export function eventsOn(day: string, { tasks, rec, settings, today }: CalData):
 /** Overdue and today's open tasks, plus today's done ones; open first, then by date and time. */
 export function todayTasks(tasks: Task[], today: string): Task[] {
   return tasks
-    .filter((t) => (t.due < today && !t.done) || t.due === today)
-    .sort((a, b) => Number(a.done) - Number(b.done) || a.due.localeCompare(b.due) || (a.time ?? "99").localeCompare(b.time ?? "99"));
+    .filter((t) => !!t.due && ((t.due < today && !t.done) || t.due === today))
+    .sort((a, b) => Number(a.done) - Number(b.done) || byDue(a, b) || (a.time ?? "99").localeCompare(b.time ?? "99"));
 }

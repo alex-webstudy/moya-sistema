@@ -1,6 +1,6 @@
 import "server-only";
 import { sortThoughts } from "./ai";
-import { addDays, fd, todayISO } from "./dates";
+import { addDays, fdue, todayISO } from "./dates";
 import type { Store } from "./store/types";
 import { PLATFORMS, type Platform, type Thought } from "./types";
 import { normProject, toNewTask } from "./validate";
@@ -21,7 +21,7 @@ export async function sortInto(store: Store, thoughts: Thought[]): Promise<strin
       const t = toNewTask({ ...x, title: x.title || th.text }, addDays(today, 1));
       if (!t) continue;
       await store.addTasks([t]);
-      done.push(`Задача: ${t.title} · ${t.project}, ${fd(t.due, today)}${t.time ? " " + t.time : ""}`);
+      done.push(`Задача: ${t.title} · ${t.project}, ${fdue(t.due, today)}${t.time ? " " + t.time : ""}`);
     } else if (x.kind === "idea") {
       const formats: readonly string[] = PLATFORMS[x.platform];
       const format = formats.includes(x.format) ? x.format : formats[0];

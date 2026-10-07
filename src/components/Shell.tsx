@@ -71,7 +71,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, []);
   const counts = {
     thoughts: app.thoughts.length,
-    tasks: app.tasks.filter((t) => !t.done && app.today && t.due <= app.today).length,
+    tasks: app.tasks.filter((t) => !t.done && app.today && !!t.due && t.due <= app.today).length,
   };
   return (
     <div className="app">

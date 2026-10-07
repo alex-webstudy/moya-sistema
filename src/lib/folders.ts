@@ -58,8 +58,8 @@ export function placeLabel(folders: Folder[], t: { project: string; folder_id?: 
 }
 
 /** Done tasks of a project as a plain-text report, oldest first. */
-export function taskReport(name: string, done: { title: string; due: string; done_at?: string | null }[], fmt: (d: string) => string): string {
-  const when = (t: { due: string; done_at?: string | null }) => (t.done_at ? todayISO(new Date(t.done_at)) : t.due);
+export function taskReport(name: string, done: { title: string; due: string | null; done_at?: string | null; created_at: string }[], fmt: (d: string) => string): string {
+  const when = (t: { due: string | null; done_at?: string | null; created_at: string }) => (t.done_at ? todayISO(new Date(t.done_at)) : t.due ?? t.created_at.slice(0, 10));
   const list = [...done].sort((a, b) => when(a).localeCompare(when(b)));
   if (!list.length) return "";
   const from = when(list[0]), to = when(list[list.length - 1]);

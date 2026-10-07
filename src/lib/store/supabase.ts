@@ -32,7 +32,8 @@ export const supabaseStore: Store = {
     let r = await sb().from("tasks").update(patch).eq("id", id).select();
     // Before 0009 is run the table has no done_at: still let tasks be ticked off.
     if (r.error && "done_at" in patch && /done_at/.test(r.error.message)) {
-      const { done_at: _, ...rest } = patch;
+      const rest = { ...patch };
+      delete rest.done_at;
       r = await sb().from("tasks").update(rest).eq("id", id).select();
     }
     const rows = check(r) as Task[];
