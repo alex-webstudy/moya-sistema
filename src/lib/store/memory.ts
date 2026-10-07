@@ -137,9 +137,10 @@ function seedRecords(t: string, now: string): Records {
   );
   rec.income.push(row({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id }));
   rec.charges.push(
-    row({ type: "credit" as const, name: "Пример: автокредит", bank: "Капиталбанк", sum: 2_800_000, day: 8, start: null, until: addDays(t, 300) }),
-    row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null }),
+    row({ type: "credit" as const, name: "Пример: автокредит", bank: "Капиталбанк", sum: 2_800_000, day: 8, start: null, until: addDays(t, 300), paid_to: null }),
+    row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null, paid_to: null }),
   );
+  rec.debts.push(row({ name: "Пример: долг за квартиру", note: "", total: 10_000_000, payments: [{ date: addDays(t, -2), sum: 3_000_000 }] }));
   rec.meetings.push(row({
     title: "Пример: созвон со Студией «Форма»", date: addDays(t, -1), folder_id: cl.id,
     summary: "Обсудили запуск сайта. Старт после подписания договора.",

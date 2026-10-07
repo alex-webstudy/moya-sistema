@@ -25,14 +25,36 @@ export function nextCharge(day: number, today: string): string {
   return m === 12 ? on(y + 1, 1) : on(y, m + 1);
 }
 
-/** Next payment of a charge, or null when its last payment has passed. */
-export function chargeNext(c: { day: number; start: string | null; until: string | null }, today: string): string | null {
-  const next = nextCharge(c.day, c.start && c.start > today ? c.start : today);
+type Sched = { day: number; start: string | null; until: string | null; paid_to?: string | null };
+const addDay = (d: string) => { const x = new Date(d + "T00:00:00Z"); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().slice(0, 10); };
+
+/**
+ * Earliest payment not yet confirmed, counting from the start of this month: a payment whose day has passed
+ * stays due until it is marked paid. Null when everything up to the last payment is confirmed.
+ */
+export function chargeNext(c: Sched, today: string): string | null {
+  let from = today.slice(0, 8) + "01";
+  if (c.start && c.start > from) from = c.start;
+  if (c.paid_to && c.paid_to >= from) from = addDay(c.paid_to);
+  const next = nextCharge(c.day, from);
   return c.until && next > c.until ? null : next;
 }
 
+/** This month's payment when it is still unconfirmed. */
+export function dueThisMonth(c: Sched, today: string): string | null {
+  const next = chargeNext(c, today);
+  return next && next.slice(0, 7) === today.slice(0, 7) ? next : null;
+}
+
+/** The payment before `d` (for undoing a confirmation), or null before the first one. */
+export function prevCharge(c: Sched, d: string): string | null {
+  const [y, m] = d.split("-").map(Number);
+  const p = nextCharge(c.day, m === 1 ? `${y - 1}-12-01` : `${y}-${String(m - 1).padStart(2, "0")}-01`);
+  return c.start && p < c.start ? null : p;
+}
+
 /** Payments left including the next one; null for open-ended charges. */
-export function paymentsLeft(c: { day: number; start: string | null; until: string | null }, today: string): number | null {
+export function paymentsLeft(c: Sched, today: string): number | null {
   const next = chargeNext(c, today);
   if (!c.until) return null;
   if (!next) return 0;

@@ -54,6 +54,15 @@ export const SCHEMAS = {
     // Instalments: first and last payment dates; empty for open-ended subscriptions.
     start: date.nullable().default(null),
     until: date.nullable().default(null),
+    // Date of the last payment he confirmed; this month's total drops it once confirmed.
+    paid_to: date.nullable().default(null),
+  }),
+  // Debts are paid down in parts and counted apart from the monthly charges.
+  debts: z.object({
+    name: name(200),
+    note: text(300).default(""),
+    total: money.min(1),
+    payments: z.array(z.object({ date, sum: money.min(1) })).max(500).default([]),
   }),
   taxes: z.object({
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
@@ -115,6 +124,7 @@ export type Client = Row<"clients">;
 export type Meeting = Row<"meetings">;
 export type Income = Row<"income">;
 export type Charge = Row<"charges">;
+export type Debt = Row<"debts">;
 export type Tax = Row<"taxes">;
 export type Day = Row<"days">;
 export type Measure = Row<"measures">;
