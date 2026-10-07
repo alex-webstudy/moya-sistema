@@ -45,7 +45,7 @@ function TrainingForm() {
 }
 
 export default function SettingsPage() {
-  const { settings, setSetting, toast } = useApp();
+  const { settings, setSetting, toast, ai } = useApp();
   const [usd, setUsd] = useState(String(settings.rates.usd));
   const [rub, setRub] = useState(String(settings.rates.rub));
 
@@ -66,6 +66,12 @@ export default function SettingsPage() {
     <>
       <div className="head"><div><h1>Настройки</h1></div></div>
       <div className="grid g2">
+        <section className="panel">
+          <h2>Claude {ai ? <span className="pill p-ok">подключён</span> : <span className="pill p-mute">не подключён</span>}</h2>
+          <div className="sub">{ai
+            ? "Кнопки со значком ✦ отвечают прямо в приложении: ответ сам встаёт в нужное поле, остаётся проверить и сохранить."
+            : "Сейчас кнопки «… в Claude ↗» открывают чат Claude, а ответ нужно вставить обратно. Чтобы Claude отвечал прямо здесь, добавь ключ ANTHROPIC_API_KEY в Vercel: Settings → Environment Variables, затем Redeploy."}</div>
+        </section>
         <section className="panel">
           <h2>Тема</h2>
           <div className="tabs" style={{ margin: 0 }}>

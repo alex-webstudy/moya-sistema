@@ -94,7 +94,7 @@ export default function Meetings() {
         <textarea placeholder="1. Вставь расшифровку встречи (из Zoom, Google Meet, Telegram)" value={transcript} onChange={(e) => setTranscript(e.target.value)} />
         <div className="acts">
           <span className="sub" style={{ fontSize: 12, flex: 1 }}>2. Claude вытащит суть, договорённости, вопросы и задачи</span>
-          <ClaudeBtn pri label="Разобрать в Claude ↗" prompt={() => MEETING_PROMPT(title.trim()) + transcript.trim()} hint={transcript.length > 5000 ? "Запрос скопирован: вставь его в Claude, а ответ сюда" : "Скопируй ответ Claude и вставь ниже"} />
+          <ClaudeBtn pri label="Разобрать в Claude ↗" prompt={() => MEETING_PROMPT(title.trim()) + transcript.trim()} hint={transcript.length > 5000 ? "Запрос скопирован: вставь его в Claude, а ответ сюда" : "Скопируй ответ Claude и вставь ниже"} onAnswer={(t) => { setAnswer(t); setParsed(null); }} />
         </div>
         <textarea placeholder="3. Вставь сюда ответ Claude" value={answer} onChange={(e) => { setAnswer(e.target.value); setParsed(null); }} />
         {!parsed && <div className="acts"><span style={{ flex: 1 }} /><button className="btn" type="button" onClick={read}>Показать итоги</button></div>}

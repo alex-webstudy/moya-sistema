@@ -69,7 +69,7 @@ function Ideas({ match }: { match: (i: IdeaRow) => boolean }) {
         <textarea className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Одна идея или сразу список, каждая с новой строки. Можно надиктовать с клавиатуры телефона" />
         <div className="acts">
           <span className="sub" style={{ fontSize: 12, flex: 1 }}>Claude предложит площадку и формат, ты утверждаешь</span>
-          <ClaudeBtn label="Предложить формат в Claude ↗" prompt={() => ideasPrompt(text, liked)} hint="Ответ Claude вставь в поле ниже" />
+          <ClaudeBtn label="Предложить формат в Claude ↗" prompt={() => ideasPrompt(text, liked)} hint="Ответ Claude вставь в поле ниже" onAnswer={setAnswer} />
           <button className="btn pri" onClick={save}>Сохранить</button>
         </div>
         <div className="addbar" style={{ margin: 0 }}>
@@ -108,7 +108,7 @@ function Ideas({ match }: { match: (i: IdeaRow) => boolean }) {
             <div className="row" key={i.id} style={{ flexWrap: "wrap" }}>
               <Dot p={i.platform} />
               <div className="t" style={{ flex: "1 1 200px" }}><b>{i.title}</b><span>{i.platform ? PLAT[i.platform].n : ""} · {fmtName(i.platform, i.format)}</span></div>
-              <ClaudeBtn className="mini" label="переупаковать ↗" prompt={() => repackPrompt(i.title, i.platform, i.format)} hint="Ответ Claude вставь в поле ответа сверху" />
+              <ClaudeBtn className="mini" label="переупаковать ↗" prompt={() => repackPrompt(i.title, i.platform, i.format)} hint="Ответ Claude вставь в поле ответа сверху" onAnswer={setAnswer} />
               <button className="btn" onClick={() => patchRec("ideas", i.id, { status: 1 })}>В работу</button>
               <button className="mini" aria-label="Удалить" onClick={() => confirm(`Удалить «${i.title}»?`) && removeRec("ideas", i.id)}>✕</button>
             </div>
@@ -143,10 +143,11 @@ function Plan({ match }: { match: (i: IdeaRow) => boolean }) {
                 {st < 3 ? (
                   <>
                     <div className="meta">
-                      <ClaudeBtn className="mini" label="сценарий в Claude ↗" prompt={() => scriptPrompt(i.title, i.platform, i.format)} hint="Готовый сценарий вставь сюда" />
+                      <ClaudeBtn className="mini" label="сценарий в Claude ↗" prompt={() => scriptPrompt(i.title, i.platform, i.format)} hint="Готовый сценарий вставь сюда"
+                        onAnswer={async (t) => { if (await patchRec("ideas", i.id, { script: t })) setOpen(i.id); }} />
                       <button className="mini" onClick={() => setOpen(open === i.id ? null : i.id)}>{i.script ? "открыть сценарий" : "вставить сценарий"}</button>
                     </div>
-                    {open === i.id && <ScriptBox i={i} />}
+                    {open === i.id && <ScriptBox key={i.script} i={i} />}
                   </>
                 ) : (
                   <div className="meta"><span>{i.date ? fd(i.date, today) : ""}</span><span style={{ marginLeft: "auto" }}>охват {i.reach ?? "—"} · заявки {i.leads ?? "—"}</span></div>

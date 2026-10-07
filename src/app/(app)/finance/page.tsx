@@ -214,7 +214,7 @@ function TaxPanel() {
         <div className="t"><b>Отчёт, минимальная зарплата (банк) и пенсионный фонд</b><span>Каждое 10-е число. Налог 1% с поступлений на р/с</span></div>
       </div>
       <div className="addbar" style={{ margin: "10px 0" }}>
-        <ClaudeBtn label="Прочитать скриншот в Claude ↗" prompt={() => TAX_PROMPT} hint="Прикрепи скриншот отчёта в Claude, ответ вставь сюда" />
+        <ClaudeBtn label="Прочитать скриншот в Claude ↗" prompt={() => TAX_PROMPT} hint="Прикрепи скриншот отчёта в Claude, ответ вставь сюда" picture onAnswer={readLine} />
         <input className="input" placeholder="Ответ Claude: 2026-09 | 120000 | пометка" value={line} onChange={(e) => readLine(e.target.value)} />
       </div>
       <form className="addbar" onSubmit={add}>

@@ -87,7 +87,7 @@ export function FoodLog({ date }: { date: string }) {
     <>
       <textarea className="input" rows={2} placeholder="Что ел: «на завтрак омлет из 3 яиц и кофе, в обед плов, вечером куриная грудка с салатом»" value={ate} onChange={(e) => setAte(e.target.value)} />
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <ClaudeBtn label="Посчитать калории в Claude ↗" prompt={() => FOOD_PROMPT + ate.trim()} hint="Скопируй ответ Claude и вставь ниже" />
+        <ClaudeBtn label="Посчитать калории в Claude ↗" prompt={() => FOOD_PROMPT + ate.trim()} hint="Скопируй ответ Claude и вставь ниже" onAnswer={setAnswer} />
         <span className="sub" style={{ fontSize: 12 }}>или просто отметь:</span>
         <div className="yn">
           <button className={"y" + (day.food_ok === true ? " on" : "")} onClick={() => set({ food_ok: day.food_ok === true ? null : true })}>Правильно</button>

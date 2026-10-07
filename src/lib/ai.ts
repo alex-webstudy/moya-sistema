@@ -27,6 +27,14 @@ const dateLine = () => {
   return `Сегодня ${t}, ${names[weekday(t)]}. Ближайшие дни: ${week}.`;
 };
 
+function apiError(e: unknown): never {
+  if (e instanceof AIError) throw e;
+  if (e instanceof Anthropic.RateLimitError) throw new AIError("Слишком много запросов к Claude, попробуй через минуту", 429);
+  if (e instanceof Anthropic.AuthenticationError) throw new AIError("Ключ ANTHROPIC_API_KEY не подходит", 503);
+  if (e instanceof Anthropic.APIError) throw new AIError("Claude сейчас недоступен (" + e.status + ")");
+  throw e;
+}
+
 async function ask<T extends z.ZodType>(schema: T, content: BetaContentBlockParam[]): Promise<z.infer<T>> {
   if (!aiEnabled()) throw new AIError("Claude не подключён: добавь ANTHROPIC_API_KEY в настройки", 503);
   try {
@@ -44,11 +52,40 @@ async function ask<T extends z.ZodType>(schema: T, content: BetaContentBlockPara
     if (!res.parsed_output) throw new AIError("Claude ответил в неожиданном формате, попробуй ещё раз");
     return res.parsed_output as z.infer<T>;
   } catch (e) {
-    if (e instanceof AIError) throw e;
-    if (e instanceof Anthropic.RateLimitError) throw new AIError("Слишком много запросов к Claude, попробуй через минуту", 429);
-    if (e instanceof Anthropic.AuthenticationError) throw new AIError("Ключ ANTHROPIC_API_KEY не подходит", 503);
-    if (e instanceof Anthropic.APIError) throw new AIError("Claude сейчас недоступен (" + e.status + ")");
-    throw e;
+    apiError(e);
+  }
+}
+
+export interface Picture { media_type: string; data: string }
+
+/**
+ * The same requests the «… в Claude ↗» buttons open in the Claude app, answered here instead:
+ * the prompt already says what format to answer in, so the text goes straight into the app's own field.
+ */
+export async function askText(prompt: string, picture?: Picture): Promise<string> {
+  if (!aiEnabled()) throw new AIError("Claude не подключён: добавь ANTHROPIC_API_KEY в настройки", 503);
+  const content: BetaContentBlockParam[] = [];
+  if (picture?.media_type === "application/pdf") content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: picture.data } });
+  else if (picture) content.push({ type: "image", source: { type: "base64", media_type: picture.media_type as "image/jpeg", data: picture.data } });
+  content.push({ type: "text", text: prompt });
+  try {
+    // Streamed so a long answer (a week review, a meeting) never hits the request timeout.
+    const res = await anthropic().beta.messages.stream({
+      model: MODEL,
+      max_tokens: 16000,
+      thinking: { type: "adaptive" },
+      output_config: { effort: "medium" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      system: `${ABOUT}\n${dateLine()}\nОтвечай по-русски, строго в том формате, который просят в запросе, без вступлений.`,
+      messages: [{ role: "user", content }],
+    }).finalMessage();
+    if (res.stop_reason === "refusal") throw new AIError("Claude отказался обработать этот запрос");
+    const text = res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
+    if (!text) throw new AIError("Claude ничего не ответил, попробуй ещё раз");
+    return text;
+  } catch (e) {
+    apiError(e);
   }
 }
 
