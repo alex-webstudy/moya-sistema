@@ -118,7 +118,7 @@ function Menu() {
     <section className="panel" style={{ marginBottom: 16 }}>
       <h2>Меню{menu && menu.date !== today ? ` от ${fd(menu.date, today)}` : " на сегодня"}
         <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <ClaudeBtn pri label="Подобрать в Claude ↗" prompt={() => menuPrompt(settings.kcal_norm, day.food, likes, dis)} hint="Вставь ответ Claude в поле ниже" />
+          <ClaudeBtn pri label="Подобрать в Claude ↗" prompt={() => menuPrompt(settings.kcal_norm, day.food, likes, dis)} hint="Вставь ответ Claude в поле ниже" onAnswer={setAnswer} />
         </span>
       </h2>
       <div className="sub" style={{ marginBottom: 10 }}>Осталось {Math.max(0, settings.kcal_norm - eaten)} ккал из {settings.kcal_norm}. <button className="mini" onClick={() => setOpen(!open)}>{open ? "скрыть поле" : "вставить ответ Claude"}</button></div>

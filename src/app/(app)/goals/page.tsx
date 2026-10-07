@@ -74,7 +74,7 @@ function Overview({ onOpen }: { onOpen: (id: string) => void }) {
         <textarea className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Например: подушка на полгода к следующему лету, свозить семью на море, выйти на 70 млн сум в месяц, похудеть до 78 кг" />
         <div className="acts">
           <span className="sub" style={{ fontSize: 12, flex: 1 }}>Claude поставит цифру и дедлайн, распределит шаги по неделям, 1–2 в неделю</span>
-          <ClaudeBtn pri label="Разложить на шаги в Claude ↗" prompt={() => goalsPrompt(text || "(цели напишу в чате)", today, ctx())} hint="Ответ Claude вставь в поле ниже" />
+          <ClaudeBtn pri label="Разложить на шаги в Claude ↗" prompt={() => goalsPrompt(text || "(цели напишу в чате)", today, ctx())} hint="Ответ Claude вставь в поле ниже" onAnswer={setAnswer} />
         </div>
         <div className="addbar" style={{ margin: 0 }}>
           <textarea className="input" style={{ minHeight: 44, flex: "1 1 260px" }} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Ответ Claude: строки ЦЕЛЬ / ШАГ / ПРИВЫЧКА" />
@@ -262,7 +262,7 @@ function Detail({ g, onBack }: { g: Goal; onBack: () => void }) {
           <div className="list">{steps.length ? steps.map((t) => <TaskRow key={t.id} t={t} />) : <Empty>Шагов пока нет</Empty>}</div>
           <div className="sub" style={{ fontSize: 12 }}>Шаги лежат в задачах и календаре</div>
           <div className="addbar" style={{ margin: "10px 0 0" }}>
-            <ClaudeBtn label={steps.length ? "Следующие шаги в Claude ↗" : "Разбить на шаги в Claude ↗"} prompt={() => nextStepsPrompt(g, Math.round(cur), Math.round(tg), ST[P.st][0], steps.map((t) => t.title + (t.done ? " (сделано)" : "")), today)} hint="Ответ Claude вставь в поле ниже" />
+            <ClaudeBtn label={steps.length ? "Следующие шаги в Claude ↗" : "Разбить на шаги в Claude ↗"} prompt={() => nextStepsPrompt(g, Math.round(cur), Math.round(tg), ST[P.st][0], steps.map((t) => t.title + (t.done ? " (сделано)" : "")), today)} hint="Ответ Claude вставь в поле ниже" onAnswer={setAnswer} />
           </div>
           <div className="addbar" style={{ margin: 0 }}>
             <textarea className="input" style={{ minHeight: 44, flex: "1 1 220px" }} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Ответ Claude: строки ШАГ / ПРИВЫЧКА" />

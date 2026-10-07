@@ -105,7 +105,7 @@ export default function Week() {
           </>
         ) : <div className="sub" style={{ marginBottom: 10 }}>Claude посмотрит задачи, контент, тренировки, деньги и цели за неделю и предложит фокус на следующую. Данные уже вложены в запрос</div>}
         <div className="addbar" style={{ margin: "12px 0 0" }}>
-          <ClaudeBtn pri={!review} label={review ? "Разобрать заново в Claude ↗" : "Подвести итоги в Claude ↗"} prompt={data} hint="Ответ Claude вставь в поле ниже" />
+          <ClaudeBtn pri={!review} label={review ? "Разобрать заново в Claude ↗" : "Подвести итоги в Claude ↗"} prompt={data} hint="Ответ Claude вставь в поле ниже" onAnswer={setAnswer} />
         </div>
         <div className="addbar" style={{ margin: 0 }}>
           <textarea className="input" style={{ minHeight: 44, flex: "1 1 260px" }} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Ответ Claude: ИТОГ, ПОЛУЧИЛОСЬ, ПРОВИСЛО, ФОКУС" />

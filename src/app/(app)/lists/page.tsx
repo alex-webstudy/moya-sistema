@@ -122,7 +122,7 @@ function Buy() {
         <section className="panel">
           <h2>Нужно купить <span className="sub" style={{ marginLeft: "auto", fontWeight: 500 }}>{buy.length - got.length}</span></h2>
           <div className="addbar">
-            <ClaudeBtn label="Список продуктов в Claude ↗" prompt={() => shopPrompt(Object.keys(prefs).filter((k) => prefs[k] > 0), settings.menu?.items.map((x) => x.name) ?? [], buy.filter((x) => !x.done).map((x) => x.text))} hint="Вставь список от Claude в поле ниже" />
+            <ClaudeBtn label="Список продуктов в Claude ↗" prompt={() => shopPrompt(Object.keys(prefs).filter((k) => prefs[k] > 0), settings.menu?.items.map((x) => x.name) ?? [], buy.filter((x) => !x.done).map((x) => x.text))} hint="Вставь список от Claude в поле ниже" onAnswer={setPaste} />
           </div>
           <ListBox list="buy" />
           <div className="addbar" style={{ marginTop: 8 }}>
