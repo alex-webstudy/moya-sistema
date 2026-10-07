@@ -127,8 +127,8 @@ function seedRecords(t: string, now: string): Records {
   );
   rec.income.push(row({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id }));
   rec.charges.push(
-    row({ type: "credit" as const, name: "Пример: автокредит", bank: "осталось 22 платежа", sum: 2_800_000, day: 8 }),
-    row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18 }),
+    row({ type: "credit" as const, name: "Пример: автокредит", bank: "Капиталбанк", sum: 2_800_000, day: 8, start: null, until: addDays(t, 300) }),
+    row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null }),
   );
   rec.meetings.push(row({
     title: "Пример: созвон со Студией «Форма»", date: addDays(t, -1), folder_id: cl.id,

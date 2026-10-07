@@ -51,6 +51,9 @@ export const SCHEMAS = {
     bank: text(200).default(""),
     sum: money.min(1),
     day: z.number().int().min(1).max(31),
+    // Instalments: first and last payment dates; empty for open-ended subscriptions.
+    start: date.nullable().default(null),
+    until: date.nullable().default(null),
   }),
   taxes: z.object({
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),

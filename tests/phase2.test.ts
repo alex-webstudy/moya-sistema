@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextCharge, toUZS } from "../src/lib/money";
+import { chargeNext, nextCharge, paymentsLeft, toUZS } from "../src/lib/money";
 import { parseMeeting } from "../src/lib/meeting";
 import { parsePatch } from "../src/lib/records";
 
@@ -53,5 +53,18 @@ describe("parsePatch", () => {
     const r = parsePatch("clients", { paid: true });
     expect(r.success && r.data).toEqual({ paid: true });
     expect(parsePatch("clients", { contract: 5 }).success).toBe(false);
+  });
+});
+
+describe("instalments", () => {
+  const c = (start: string | null, until: string | null, day = 18) => ({ day, start, until });
+  it("starts later, ends, and counts payments left", () => {
+    expect(chargeNext(c(null, "2026-10-18"), "2026-10-07")).toBe("2026-10-18");
+    expect(paymentsLeft(c(null, "2026-10-18"), "2026-10-07")).toBe(1);
+    expect(chargeNext(c(null, "2026-10-18"), "2026-10-19")).toBeNull();
+    expect(paymentsLeft(c(null, "2026-10-18"), "2026-10-19")).toBe(0);
+    expect(chargeNext(c("2026-11-04", "2027-01-04", 4), "2026-10-07")).toBe("2026-11-04");
+    expect(paymentsLeft(c("2026-11-04", "2027-01-04", 4), "2026-10-07")).toBe(3);
+    expect(paymentsLeft(c(null, null), "2026-10-07")).toBeNull();
   });
 });

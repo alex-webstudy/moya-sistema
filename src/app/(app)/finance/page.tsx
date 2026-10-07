@@ -4,7 +4,7 @@ import { Icons } from "@/components/icons";
 import { useApp } from "@/components/store";
 import { ClaudeBtn, CurSelect, Empty } from "@/components/ui";
 import { fd, MONN } from "@/lib/dates";
-import { monthKey, nextCharge, nextTaxDate, rub, toUZS, type Cur } from "@/lib/money";
+import { chargeNext, monthKey, nextTaxDate, paymentsLeft, rub, toUZS, type Cur } from "@/lib/money";
 import { FIN_PROMPT, TAX_PROMPT } from "@/lib/prompts";
 import type { Charge } from "@/lib/records";
 
@@ -18,9 +18,12 @@ export default function Finance() {
   const [open, setOpen] = useState<Folder | null>(null);
   const mk = monthKey(today);
   const incMonth = rec.income.filter((i) => i.date.startsWith(mk));
-  const ch = rec.charges.map((c) => ({ ...c, next: nextCharge(c.day, today) }));
-  const cr = ch.filter((c) => c.type === "credit").sort((a, b) => a.day - b.day);
-  const sb = ch.filter((c) => c.type === "sub").sort((a, b) => a.day - b.day);
+  // Finished instalments drop out of the totals; they stay listed as closed.
+  const all = rec.charges.map((c) => ({ ...c, next: chargeNext(c, today), left: paymentsLeft(c, today) }));
+  const ch = all.filter((c): c is typeof c & { next: string } => c.next !== null);
+  const cr = ch.filter((c) => c.type === "credit").sort((a, b) => a.next.localeCompare(b.next));
+  const sb = ch.filter((c) => c.type === "sub").sort((a, b) => a.next.localeCompare(b.next));
+  const closed = all.filter((c) => c.next === null);
   const upcoming = [...ch].sort((a, b) => a.next.localeCompare(b.next))[0];
   const lastTax = [...rec.taxes].sort((a, b) => b.month.localeCompare(a.month))[0];
   const month = MONN[+mk.slice(5) - 1].toLowerCase();
@@ -51,7 +54,7 @@ export default function Finance() {
           {open === "ai" && <Review />}
           {open === "inc" && <IncomePanel />}
           {open === "tax" && <TaxPanel />}
-          {(open === "credit" || open === "sub") && <Charges type={open} list={open === "credit" ? cr : sb} />}
+          {(open === "credit" || open === "sub") && <Charges type={open} list={open === "credit" ? cr : sb} closed={closed.filter((c) => c.type === open)} />}
         </>
       ) : (
         <div className="fgrid">
@@ -192,7 +195,10 @@ function TaxPanel() {
   );
 }
 
-function Charges({ type, list }: { type: "credit" | "sub"; list: (Charge & { next: string })[] }) {
+type Row = Charge & { next: string | null; left: number | null };
+const dmy = (s: string) => s.split("-").reverse().join(".");
+
+function Charges({ type, list, closed }: { type: "credit" | "sub"; list: Row[]; closed: Row[] }) {
   const { settings, today, addRec, removeRec, toast } = useApp();
   const credit = type === "credit";
   const [name, setName] = useState("");
@@ -200,13 +206,14 @@ function Charges({ type, list }: { type: "credit" | "sub"; list: (Charge & { nex
   const [cur, setCur] = useState<Cur>("uzs");
   const [day, setDay] = useState("");
   const [bank, setBank] = useState("");
+  const [until, setUntil] = useState("");
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const d = Math.round(num(day));
     if (!name.trim() || num(sum) <= 0 || d < 1 || d > 31) return toast("Заполни название, сумму и число от 1 до 31");
-    if ((await addRec("charges", [{ type, name: name.trim(), sum: toUZS(num(sum), cur, settings.rates).sum, day: d, bank: bank.trim() }])).length) {
-      setName(""); setSum(""); setDay(""); setBank("");
+    if ((await addRec("charges", [{ type, name: name.trim(), sum: toUZS(num(sum), cur, settings.rates).sum, day: d, bank: bank.trim(), until: until || null }])).length) {
+      setName(""); setSum(""); setDay(""); setBank(""); setUntil("");
     }
   }
   return (
@@ -216,18 +223,24 @@ function Charges({ type, list }: { type: "credit" | "sub"; list: (Charge & { nex
         {list.length ? list.map((c) => (
           <div className="row" key={c.id}>
             <span className="amt" style={{ width: 56, flex: "none", color: "var(--muted)" }}>{c.day} чис.</span>
-            <div className="t"><b>{c.name}</b><span>{c.bank ? c.bank + " · " : ""}следующее {fd(c.next, today)}</span></div>
+            <div className="t"><b>{c.name}</b><span>{c.bank ? c.bank + " · " : ""}{c.start && c.start > today ? "с " + dmy(c.start) : "следующее " + fd(c.next!, today)}{c.until ? ` · до ${dmy(c.until)}, осталось ${c.left}` : ""}</span></div>
             <span className="amt">{rub(c.sum)}</span>
             <button className="mini" aria-label="Удалить" onClick={() => confirm(`Удалить «${c.name}»?`) && removeRec("charges", c.id)}>✕</button>
           </div>
         )) : <Empty>Пока пусто</Empty>}
       </div>
+      {closed.length > 0 && (
+        <div className="sub" style={{ fontSize: 12, marginTop: 8 }}>
+          Закрыты: {closed.map((c, i) => <span key={c.id}>{i ? ", " : ""}{c.name} ({dmy(c.until!)}) <button className="mini" aria-label="Удалить" onClick={() => removeRec("charges", c.id)}>✕</button></span>)}
+        </div>
+      )}
       <form className="addbar" onSubmit={add} style={{ margin: "12px 0 0" }}>
         <input className="input" placeholder={credit ? "Например «Автокредит»" : "Например «Claude Pro»"} value={name} onChange={(e) => setName(e.target.value)} />
         <input className="input" inputMode="decimal" placeholder="В месяц" value={sum} onChange={(e) => setSum(e.target.value)} style={{ flex: "0 1 110px" }} />
         <CurSelect value={cur} onChange={setCur} />
         <input className="input" inputMode="numeric" placeholder="Число" value={day} onChange={(e) => setDay(e.target.value)} style={{ flex: "0 1 80px" }} />
-        {credit && <input className="input" placeholder="Банк, остаток" value={bank} onChange={(e) => setBank(e.target.value)} style={{ flex: "1 1 140px" }} />}
+        {credit && <input className="input" placeholder="Банк" value={bank} onChange={(e) => setBank(e.target.value)} style={{ flex: "1 1 120px" }} />}
+        {credit && <label className="lbl" style={{ flex: "0 1 150px" }}>Последний платёж<input className="input" type="date" value={until} onChange={(e) => setUntil(e.target.value)} /></label>}
         <button className="btn pri">Добавить</button>
       </form>
     </section>
