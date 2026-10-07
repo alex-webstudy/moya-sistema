@@ -1,18 +1,12 @@
 import "server-only";
-import { createECDH, createHmac, timingSafeEqual } from "node:crypto";
+import { createECDH, timingSafeEqual } from "node:crypto";
+import { derive } from "./derive";
 import webpush from "web-push";
 import { getStore } from "./store";
 import type { PushSub } from "./store/types";
 import type { Push } from "./reminders";
 
 // Keys are derived from SESSION_SECRET, so push needs no new settings and no secret ever leaves the server.
-const secret = () => {
-  const s = process.env.SESSION_SECRET;
-  if (!s || s.length < 32) throw new Error("SESSION_SECRET должен быть не короче 32 символов");
-  return s;
-};
-const derive = (label: string) => createHmac("sha256", secret()).update(label).digest();
-
 export function vapidKeys() {
   const ecdh = createECDH("prime256v1");
   ecdh.setPrivateKey(derive("vapid-v1"));

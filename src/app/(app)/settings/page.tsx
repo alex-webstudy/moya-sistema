@@ -94,6 +94,10 @@ export default function SettingsPage() {
           <TrainingForm />
         </section>
         <section className="panel">
+          <h2>Telegram-бот {settings.telegram ? <span className="pill p-ok">подключён</span> : <span className="pill p-mute">не подключён</span>}</h2>
+          <TgBot />
+        </section>
+        <section className="panel">
           <h2>Напоминания</h2>
           <Push />
           <div className="list" style={{ marginTop: 12 }}>
@@ -195,6 +199,36 @@ function Push() {
           )}
         </div>
       )}
+    </>
+  );
+}
+
+/** Connects the owner's Telegram bot: the token goes to Vercel, the link binds this chat. */
+function TgBot() {
+  const { settings, toast } = useApp();
+  const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
+  async function connect() {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/telegram", { method: "POST" });
+      const out = (await r.json().catch(() => ({}))) as { link?: string; error?: string };
+      if (!r.ok || !out.link) return toast(out.error ?? "Не получилось подключить");
+      setLink(out.link);
+      window.open(out.link, "_blank", "noopener");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <div className="sub" style={{ marginBottom: 10 }}>{settings.telegram
+        ? `Бот пишет в чат ${settings.telegram.name || ""}. Отправляй ему мысли, дела и скриншоты: Claude разложит их по разделам. Напоминания тоже приходят туда.`
+        : "1) В Telegram у @BotFather создай бота (/newbot) и скопируй токен. 2) Добавь его в Vercel как TELEGRAM_BOT_TOKEN и сделай Redeploy. 3) Нажми «Подключить» и в открывшемся Telegram нажми «Старт»."}</div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <button className={settings.telegram ? "btn" : "btn pri"} disabled={busy} onClick={connect}>{busy ? "Подключаю…" : settings.telegram ? "Подключить заново" : "Подключить"}</button>
+        {link && <a className="mini" href={link} target="_blank" rel="noopener">открыть бота ↗</a>}
+      </div>
     </>
   );
 }

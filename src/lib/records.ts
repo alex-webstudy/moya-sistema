@@ -231,6 +231,8 @@ export const SETTINGS = {
   followers: z.object({ ig: z.array(z.object({ date, n: z.number().int().min(0).max(1e9) })).max(400), yt: z.array(z.object({ date, n: z.number().int().min(0).max(1e9) })).max(400), tg: z.array(z.object({ date, n: z.number().int().min(0).max(1e9) })).max(400) }),
   // Salt and an encrypted check value for the vault master password; no password or key is stored.
   vault_meta: z.object({ salt: z.string().max(60), iv: z.string().max(40), check: z.string().max(200) }).nullable(),
+  // The owner's chat with the Telegram bot; messages from any other chat are ignored.
+  telegram: z.object({ chat_id: z.number().int(), name: z.string().max(100) }).nullable(),
 } as const;
 export type SettingKey = keyof typeof SETTINGS;
 export type Settings = { [K in SettingKey]: z.output<(typeof SETTINGS)[K]> };
@@ -245,6 +247,7 @@ export const DEFAULT_SETTINGS: Settings = {
   menu: null,
   followers: { ig: [], yt: [], tg: [] },
   vault_meta: null,
+  telegram: null,
   contract_tpl: `ДОГОВОР ОКАЗАНИЯ УСЛУГ № {{номер}}
 
 г. {{город}}, {{дата}}
