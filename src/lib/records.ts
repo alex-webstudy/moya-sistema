@@ -44,6 +44,8 @@ export const SCHEMAS = {
     sum: money.min(1),
     orig: text(60).default(""),
     client_id: uuid.nullable().default(null),
+    // "rs": the ИП settlement account (taxed 1%); "card": personal card.
+    account: z.enum(["rs", "card"]).default("rs"),
   }),
   charges: z.object({
     type: z.enum(["credit", "sub"]),

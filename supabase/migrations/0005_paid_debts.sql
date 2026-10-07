@@ -1,8 +1,11 @@
--- «Моя система»: confirmed payments and debts paid down in parts.
+-- «Моя система»: confirmed payments, debts paid down in parts, income to the card.
 -- Safe to run again.
 
 -- The date of the last payment he confirmed; this month's total drops it once confirmed.
 alter table public.charges add column if not exists paid_to date;
+
+-- Income goes either to the ИП settlement account (taxed) or to the personal card.
+alter table public.income add column if not exists account text not null default 'rs' check (account in ('rs', 'card'));
 
 create table if not exists public.debts (
   id uuid primary key default gen_random_uuid(),

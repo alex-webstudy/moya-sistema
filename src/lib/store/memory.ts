@@ -135,7 +135,9 @@ function seedRecords(t: string, now: string): Records {
     c("Пример: Магазин «Ромашка»", "Поддержка", 2, 5_000_000, -3, false, -9, "Оплата счёта"),
     c("Пример: Денис", "Консультация", 2, 1_270_000, -6, true, -6),
   );
-  rec.income.push(row({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id }));
+  rec.income.push(
+    row({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id, account: "rs" as const }),
+    row({ date: addDays(t, -3), source: "Пример: частный заказ", note: "правки сайта", sum: 600_000, orig: "", client_id: null, account: "card" as const }));
   rec.charges.push(
     row({ type: "credit" as const, name: "Пример: автокредит", bank: "Капиталбанк", sum: 2_800_000, day: 8, start: null, until: addDays(t, 300), paid_to: null }),
     row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null, paid_to: null }),

@@ -8,7 +8,7 @@ import { chargeNext, dueThisMonth, monthKey, nextTaxDate, paymentsLeft, prevChar
 import { FIN_PROMPT, TAX_PROMPT } from "@/lib/prompts";
 import type { Charge, Debt } from "@/lib/records";
 
-type Folder = "ai" | "inc" | "tax" | "credit" | "sub" | "debt";
+type Folder = "ai" | "inc" | "card" | "tax" | "credit" | "sub" | "debt";
 const num = (s: string) => Number(s.replace(/\s/g, "").replace(",", ".")) || 0;
 const monthName = (ym: string) => MONN[+ym.slice(5) - 1] + " " + ym.slice(0, 4);
 const total = (a: { sum: number }[]) => a.reduce((s, x) => s + x.sum, 0);
@@ -19,6 +19,7 @@ export default function Finance() {
   const [open, setOpen] = useState<Folder | null>(null);
   const mk = monthKey(today);
   const incMonth = rec.income.filter((i) => i.date.startsWith(mk));
+  const rsMonth = incMonth.filter((i) => i.account !== "card"), cardMonth = incMonth.filter((i) => i.account === "card");
   // Finished instalments drop out of the totals; they stay listed as closed.
   const all = rec.charges.map((c) => ({ ...c, next: chargeNext(c, today), left: paymentsLeft(c, today), due: dueThisMonth(c, today) }));
   const ch = all.filter((c): c is typeof c & { next: string } => c.next !== null);
@@ -36,7 +37,8 @@ export default function Finance() {
 
   const F: [Folder, string, string][] = [
     ["ai", "Финансовый разбор", "Claude смотрит цифры и предлагает шаги"],
-    ["inc", "Поступления на р/с", `${rub(total(incMonth))} в этом месяце · ${rec.income.length} записей`],
+    ["inc", "Поступления на р/с", `${rub(total(rsMonth))} в этом месяце · ${rsMonth.length}`],
+    ["card", "Поступления на карту", `${rub(total(cardMonth))} в этом месяце · ${cardMonth.length}`],
     ["tax", "Налоги и взносы ИП", `следующий срок ${fd(nextTaxDate(today), today)}`],
     ["credit", "Кредиты", `осталось в ${monthIn} ${rub(total(cr.filter((c) => c.due)))} · ${cr.length}`],
     ["sub", "Подписки", `осталось в ${monthIn} ${rub(total(sb.filter((c) => c.due)))} · ${sb.length}`],
@@ -48,7 +50,7 @@ export default function Finance() {
     <>
       <div className="head"><div><h1>Финансы</h1><div className="sub">Всё в сумах. Сумму в $ или ₽ можно вводить как есть, переведу по курсу из настроек</div></div></div>
       <div className="kpis">
-        <div className="kpi"><div className="l">Пришло на р/с, {month}</div><div className="v" style={{ color: "var(--ok)" }}>{rub(total(incMonth))}</div><div className="n">{incMonth.length} поступлений</div></div>
+        <div className="kpi"><div className="l">Приход, {month}</div><div className="v" style={{ color: "var(--ok)" }}>{rub(total(incMonth))}</div><div className="n">р/с {rub(total(rsMonth))} · карта {rub(total(cardMonth))}</div></div>
         <div className="kpi"><div className="l">Осталось оплатить в {monthIn}</div><div className="v">{rub(total(dueNow))}</div><div className="n">{dueNow.length ? `${dueNow.length} платеж${dueNow.length === 1 ? "" : dueNow.length < 5 ? "а" : "ей"} · из ${rub(total(all.filter((c) => c.due || c.paid_to?.startsWith(mk))))} за месяц` : "всё оплачено"}</div></div>
         <div className="kpi"><div className="l">Следующее списание</div><div className="v" style={{ fontSize: 18 }}>{upcoming ? fd(upcoming.next, today) : "—"}</div><div className="n">{upcoming ? `${upcoming.name} · ${rub(upcoming.sum)}` : "нет списаний"}</div></div>
         <div className="kpi"><div className="l">Налог{lastTax ? " за " + monthName(lastTax.month).toLowerCase() : ""}</div><div className="v">{lastTax ? rub(lastTax.tax) : "—"}</div><div className="n">по отчёту</div></div>
@@ -60,7 +62,7 @@ export default function Finance() {
             <button className="mini" onClick={() => setOpen(null)}>Финансы</button><span>›</span><b>{F.find((f) => f[0] === open)?.[1] ?? "Долги"}</b>
           </div>
           {open === "ai" && <Review />}
-          {open === "inc" && <IncomePanel />}
+          {(open === "inc" || open === "card") && <IncomePanel key={open} account={open === "inc" ? "rs" : "card"} />}
           {open === "tax" && <TaxPanel />}
           {(open === "credit" || open === "sub") && <Charges type={open} list={open === "credit" ? cr : sb} closed={closed.filter((c) => c.type === open)} monthIn={monthIn} />}
           {open === "debt" && <Debts />}
@@ -86,7 +88,7 @@ function Review() {
     return FIN_PROMPT + JSON.stringify({
       сегодня: today,
       приход_по_месяцам: byMonth,
-      поступления: rec.income.slice(-40).map((i) => ({ дата: i.date, от: i.source, за: i.note, сумма: i.sum })),
+      поступления: rec.income.slice(-40).map((i) => ({ дата: i.date, от: i.source, за: i.note, сумма: i.sum, куда: i.account === "card" ? "карта" : "р/с" })),
       кредиты_и_подписки: rec.charges.map((c) => ({ тип: c.type === "credit" ? "кредит" : "подписка", название: c.name, сумма_в_месяц: c.sum, число: c.day, последний_платёж: c.until })),
       долги: rec.debts.map((d) => ({ долг: d.name, всего: d.total, осталось: debtLeft(d) })),
       налоги: rec.taxes.map((t) => ({ месяц: t.month, налог: t.tax })),
@@ -102,7 +104,7 @@ function Review() {
   );
 }
 
-function IncomePanel() {
+function IncomePanel({ account }: { account: "rs" | "card" }) {
   const { rec, settings, today, addRec, removeRec, toast } = useApp();
   const [from, setFrom] = useState("");
   const [other, setOther] = useState("");
@@ -110,6 +112,7 @@ function IncomePanel() {
   const [sum, setSum] = useState("");
   const [cur, setCur] = useState<Cur>("uzs");
   const [date, setDate] = useState(today);
+  const list = rec.income.filter((i) => (i.account ?? "rs") === account);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -118,14 +121,14 @@ function IncomePanel() {
     if (!source) return toast("Укажи, от кого пришло");
     if (num(sum) <= 0) return toast("Укажи сумму");
     const m = toUZS(num(sum), cur, settings.rates);
-    if ((await addRec("income", [{ date, source, note: note.trim(), ...m, client_id: client?.id ?? null }])).length) {
+    if ((await addRec("income", [{ date, source, note: note.trim(), ...m, client_id: client?.id ?? null, account }])).length) {
       setSum(""); setNote(""); setOther("");
       toast("Поступление записано");
     }
   }
   return (
     <section className="panel">
-      <h2>Поступления на расчётный счёт</h2>
+      <h2>{account === "rs" ? "Поступления на расчётный счёт" : "Поступления на карту"}</h2>
       <form className="addbar" onSubmit={add}>
         <select className="input" style={{ flex: "1 1 160px" }} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="От кого">
           <option value="">Другое…</option>
@@ -139,7 +142,7 @@ function IncomePanel() {
         <button className="btn pri">Добавить</button>
       </form>
       <div className="list">
-        {rec.income.length ? [...rec.income].sort((a, b) => b.date.localeCompare(a.date)).map((i) => (
+        {list.length ? [...list].sort((a, b) => b.date.localeCompare(a.date)).map((i) => (
           <div className="row" key={i.id}>
             <div className="t"><b>{i.source}</b><span>{i.note ? i.note + " · " : ""}{fd(i.date, today)}{i.orig ? " · " + i.orig : ""}</span></div>
             <span className="amt" style={{ color: "var(--ok)" }}>+{rub(i.sum)}</span>
@@ -147,7 +150,7 @@ function IncomePanel() {
           </div>
         )) : <Empty>Пока нет поступлений</Empty>}
       </div>
-      <div className="sub" style={{ fontSize: 12, marginTop: 8 }}>Оплата, отмеченная в «Клиентах», попадает сюда сама</div>
+      <div className="sub" style={{ fontSize: 12, marginTop: 8 }}>{account === "rs" ? "С них считается налог 1%. Оплата, отмеченная в «Клиентах», попадает сюда сама" : "Налог с карты не считается"}</div>
     </section>
   );
 }
