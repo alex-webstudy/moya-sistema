@@ -11,7 +11,7 @@ const WD = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const fmt = (x: number) => (Math.round(x * 100) / 100).toLocaleString("ru-RU");
 
 export default function Health() {
-  const { rec, today } = useApp();
+  const { rec, today, patchDay } = useApp();
   const tr = useTraining();
   const isTraining = tr.on;
   const byDate = new Map(rec.days.map((d) => [d.date, d]));
@@ -19,7 +19,9 @@ export default function Health() {
   let trPlan = 0, trDone = 0, fDays = 0, fGood = 0;
   for (const s of g.days.filter((x) => x <= today)) {
     const d = byDate.get(s);
-    if (isTraining(s)) { trPlan++; if (d?.workout) trDone++; }
+    // A workout moved to another day still counts: done is every day trained, plan is the schedule.
+    if (isTraining(s)) trPlan++;
+    if (d?.workout) trDone++;
     if (d && d.food_ok !== null) { fDays++; if (d.food_ok) fGood++; }
   }
   const wk = weekDays(today).filter((x) => x <= today);
@@ -37,7 +39,7 @@ export default function Health() {
     <>
       <div className="head"><div><h1>Здоровье</h1><div className="sub">Тренировки с {tr.start} до {tr.end} · вода и еда каждый день · замеры раз в неделю</div></div></div>
       <div className="kpis">
-        <div className="kpi"><div className="l">Тренировки, {MONN[g.month].toLowerCase()}</div><div className="v">{trDone} / {trPlan}</div><div className="n">по графику на сегодня</div></div>
+        <div className="kpi"><div className="l">Тренировки, {MONN[g.month].toLowerCase()}</div><div className="v">{Math.min(trDone, trPlan)} / {trPlan}</div><div className="n">по графику на сегодня</div></div>
         <div className="kpi"><div className="l">Дни с правильным питанием</div><div className="v">{fGood} / {fDays}</div><div className="n">{fDays ? Math.round((fGood / fDays) * 100) : 0}% отмеченных дней</div></div>
         <div className="kpi"><div className="l">Вода за неделю</div><div className="v">{fmt(wWater)} л</div><div className="n">в среднем {wk.length ? fmt(wWater / wk.length) : 0} л в день</div></div>
         <div className="kpi"><div className="l">Вес</div><div className="v">{B?.weight != null ? fmt(B.weight) + " кг" : "—"}</div><div className="n">с прошлого замера {delta("weight", "кг")}</div></div>
@@ -57,11 +59,16 @@ export default function Health() {
             {Array.from({ length: g.lead }, (_, i) => <div key={"b" + i} />)}
             {g.days.map((s) => {
               const d = byDate.get(s);
+              const w = d?.workout ?? null;
+              // Past days: tap to mark a workout (done → missed → clear; off-schedule days only done → clear).
+              const next = w === null ? true : w && isTraining(s) ? false : null;
               return (
-                <div key={s} className={"day" + (s === today ? " today" : "") + (s > today ? " fut" : "")}>
+                <div key={s} className={"day" + (s === today ? " today" : "") + (s > today ? " fut" : "")}
+                  {...(s <= today ? { role: "button", tabIndex: 0, title: "Отметить тренировку", style: { cursor: "pointer" }, onClick: () => patchDay(s, { workout: next }),
+                    onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); patchDay(s, { workout: next }); } } } : {})}>
                   <span className="n">{dayNum(s)}</span>
                   <div className="marks">
-                    {isTraining(s) && <span className={"m " + (d?.workout === true ? "p-ok" : d?.workout === false ? "p-bad" : "p-mute")}>трен</span>}
+                    {(isTraining(s) || w === true) && <span className={"m " + (d?.workout === true ? "p-ok" : d?.workout === false ? "p-bad" : "p-mute")}>трен</span>}
                     {d && d.food_ok !== null && <span className={"m " + (d.food_ok ? "p-ok" : "p-bad")}>еда</span>}
                     {!!d?.water && <span className="m p-info">{fmt(d.water)}л</span>}
                   </div>
@@ -73,6 +80,7 @@ export default function Health() {
             <span><i className="dot" style={{ background: "var(--ok)" }} />выполнено</span>
             <span><i className="dot" style={{ background: "var(--bad)" }} />пропуск</span>
             <span><i className="dot" style={{ background: "var(--info)" }} />вода, л</span>
+            <span>нажми на прошедший день, чтобы отметить тренировку</span>
           </div>
         </section>
       </div>
