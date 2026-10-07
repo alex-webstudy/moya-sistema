@@ -1,6 +1,7 @@
 import { isISODate, isTime } from "./dates";
 import { PROJECTS, type NewTask, type TaskPatch } from "./types";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const clean = (s: unknown, max = 500) => (typeof s === "string" ? s.trim().slice(0, max) : "");
 
 export function normProject(p: unknown): string {
@@ -17,6 +18,7 @@ export function toNewTask(x: unknown, fallbackDue: string): NewTask | null {
     project: normProject(o.project),
     due: isISODate(o.due) ? o.due : fallbackDue,
     time: isTime(o.time) ? o.time : null,
+    ...(typeof o.goal_id === "string" && UUID.test(o.goal_id) ? { goal_id: o.goal_id } : {}),
   };
 }
 

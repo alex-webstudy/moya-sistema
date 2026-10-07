@@ -113,6 +113,45 @@ export const SCHEMAS = {
     title: name(300),
     note: text(1000).default(""),
   }),
+  // Phase 4: content, goals, week reviews, the password vault.
+  ideas: z.object({
+    title: name(300),
+    // Empty platform: waits for approval with Claude's suggestion.
+    platform: z.enum(["tg", "ig", "yt"]).nullable().default(null),
+    format: text(20).default(""),
+    why: text(300).default(""),
+    approved: z.boolean().default(true),
+    // 0 idea bank, 1 in work, 2 edited, 3 published.
+    status: z.number().int().min(0).max(3).default(0),
+    date: date.nullable().default(null),
+    reach: z.number().int().min(0).max(1e9).nullable().default(null),
+    leads: z.number().int().min(0).max(1e6).nullable().default(null),
+    script: text(10000).default(""),
+  }),
+  goals: z.object({
+    title: name(200),
+    horizon: z.enum(["year", "quarter", "month"]).default("year"),
+    start: date,
+    deadline: date,
+    start_val: z.number().min(-1e15).max(1e15).default(0),
+    target: z.number().min(-1e15).max(1e15),
+    unit: text(20).default(""),
+    why: text(300).default(""),
+    // "savings": the safety cushion, its target is 6 months of obligatory payments.
+    kind: z.enum(["", "savings"]).default(""),
+    hist: z.array(z.object({ date, v: z.number().min(-1e15).max(1e15) })).max(1000).default([]),
+    habits: z.array(z.object({ id: z.string().max(40), text: name(300), freq: text(60).default(""), log: z.array(date).max(400).default([]) })).max(20).default([]),
+  }),
+  weeks: z.object({
+    week: date, // Monday
+    review: text(6000).default(""),
+    focus: z.array(text(300)).max(10).default([]),
+  }),
+  // Encrypted in the browser with the master password; the server only ever sees ciphertext.
+  vault: z.object({
+    data: z.string().min(1).max(40000),
+    iv: z.string().min(1).max(40),
+  }),
 } as const;
 
 export type Table = keyof typeof SCHEMAS;
@@ -134,6 +173,10 @@ export type ListItem = Row<"list_items">;
 export type Purchase = Row<"purchases">;
 export type Trip = Row<"trips">;
 export type Saved = Row<"saved">;
+export type IdeaRow = Row<"ideas">;
+export type Goal = Row<"goals">;
+export type Week = Row<"weeks">;
+export type VaultRow = Row<"vault">;
 export type Food = Day["food"][number];
 export type Records = { [T in Table]: Row<T>[] };
 
@@ -159,6 +202,9 @@ export const SETTINGS = {
     date,
     items: z.array(z.object({ meal: z.enum(["breakfast", "lunch", "dinner", "snack"]), name: name(200), portion: text(100), kcal: z.number().int().min(0).max(5000), protein: z.number().int().min(0).max(500) })).max(40),
   }).nullable(),
+  followers: z.object({ ig: z.array(z.object({ date, n: z.number().int().min(0).max(1e9) })).max(400), yt: z.array(z.object({ date, n: z.number().int().min(0).max(1e9) })).max(400), tg: z.array(z.object({ date, n: z.number().int().min(0).max(1e9) })).max(400) }),
+  // Salt and an encrypted check value for the vault master password; no password or key is stored.
+  vault_meta: z.object({ salt: z.string().max(60), iv: z.string().max(40), check: z.string().max(200) }).nullable(),
 } as const;
 export type SettingKey = keyof typeof SETTINGS;
 export type Settings = { [K in SettingKey]: z.output<(typeof SETTINGS)[K]> };
@@ -171,6 +217,8 @@ export const DEFAULT_SETTINGS: Settings = {
   training: { days: [2, 4, 6], start: "10:00", end: "12:30" },
   dish_prefs: {},
   menu: null,
+  followers: { ig: [], yt: [], tg: [] },
+  vault_meta: null,
   contract_tpl: `ДОГОВОР ОКАЗАНИЯ УСЛУГ № {{номер}}
 
 г. {{город}}, {{дата}}

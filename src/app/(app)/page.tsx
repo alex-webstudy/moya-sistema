@@ -4,11 +4,13 @@ import { useApp } from "@/components/store";
 import { TaskRow } from "@/components/TaskRow";
 import { addDays, fd, weekday } from "@/lib/dates";
 import { eventsOn, todayTasks } from "@/lib/events";
+import { monday } from "@/lib/week";
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 export default function Today() {
-  const { tasks, thoughts, today, settings } = useApp();
+  const { tasks, thoughts, today, settings, rec } = useApp();
+  const focus = rec.weeks.find((w) => w.week === monday(today))?.focus ?? [];
   const h = new Date().getHours();
   const greet = h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
   const dateStr = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
@@ -26,6 +28,12 @@ export default function Today() {
         <div className="kpi"><div className="l">Задачи на сегодня</div><div className="v">{open}</div><div className="n">осталось сделать</div></div>
         <div className="kpi"><div className="l">Быстрые мысли</div><div className="v">{thoughts.length}</div><div className="n">разобрать вечером</div></div>
       </div>
+      {focus.length > 0 && (
+        <section className="panel" style={{ marginBottom: 16 }}>
+          <h2>Главное на неделе <Link className="more" href="/week">Итоги недели →</Link></h2>
+          <div className="list">{focus.map((x, i) => <div className="row" key={i}><span className="pill p-acc">{i + 1}</span><div className="t">{x}</div></div>)}</div>
+        </section>
+      )}
       <div className="grid g2">
         <section className="panel">
           <h2>Дела на сегодня <Link className="more" href="/tasks">Все задачи →</Link></h2>

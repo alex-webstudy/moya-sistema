@@ -4,7 +4,7 @@ import type { Idea, NewTask, Platform, Task, TaskPatch, Thought } from "../types
 import type { Store } from "./types";
 
 // Demo store: lives in server memory, resets on restart. Used when Supabase is not configured.
-interface Data { tasks: Task[]; thoughts: Thought[]; ideas: Idea[]; rec: Records; settings: Partial<Settings> }
+interface Data { tasks: Task[]; thoughts: Thought[]; rec: Records; settings: Partial<Settings> }
 
 const g = globalThis as unknown as { __msDemo?: Data };
 
@@ -14,8 +14,13 @@ function seed(): Data {
   const task = (title: string, project: string, due: number, time: string | null, done = false): Task => ({
     id: crypto.randomUUID(), title, project, due: addDays(t, due), time, done, created_at: now,
   });
+  const rec = seedRecords(t, now);
+  const goal = rec.goals[0].id;
+  const step = (title: string, due: number, done = false): Task => ({ ...task(title, "Личное", due, null, done), goal_id: goal });
   return {
     tasks: [
+      step("Открыть накопительный счёт", -3, true),
+      step("Настроить автоперевод 10% с прихода", 4),
       task("Обновить доступы к хостингу у «Ромашки»", "Клиенты", -1, null),
       task("Смонтировать рилс про возражения", "Instagram", 0, "11:00"),
       task("Отправить договор «Студия Форма»", "Клиенты", 0, "15:00"),
@@ -27,8 +32,7 @@ function seed(): Data {
       { id: crypto.randomUUID(), text: "Снять рилс: 3 ошибки в портфолио дизайнера", created_at: now },
       { id: crypto.randomUUID(), text: "Позвонить Марине по сайту салона в четверг", created_at: now },
     ],
-    ideas: [],
-    rec: seedRecords(t, now),
+    rec,
     settings: {},
   };
 }
@@ -40,7 +44,7 @@ export const memoryStore: Store = {
   async listTasks() { return [...db().tasks]; },
   async addTasks(items: NewTask[]) {
     const now = new Date().toISOString();
-    const out = items.map((x) => ({ ...x, id: crypto.randomUUID(), done: false, created_at: now }));
+    const out = items.map((x) => ({ ...x, goal_id: x.goal_id ?? null, id: crypto.randomUUID(), done: false, created_at: now }));
     db().tasks.push(...out);
     return out;
   },
@@ -64,9 +68,9 @@ export const memoryStore: Store = {
     return n;
   },
   async addIdea(title: string, platform: Platform, format: string) {
-    const i = { id: crypto.randomUUID(), title, platform, format, created_at: new Date().toISOString() };
-    db().ideas.push(i);
-    return i;
+    const i = { ...SCHEMAS.ideas.parse({ title, platform, format }), id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    db().rec.ideas.push(i);
+    return i as Idea;
   },
   async list<T extends Table>(table: T) { return [...db().rec[table]] as Records[T]; },
   async insert<T extends Table>(table: T, rows: object[]) {
@@ -95,6 +99,7 @@ export const memoryStore: Store = {
       rec.meetings.forEach((m) => { if (m.folder_id && gone.has(m.folder_id)) m.folder_id = null; });
       return;
     }
+    if (table === "goals") db().tasks.forEach((t) => { if (t.goal_id === id) t.goal_id = null; });
     if (table === "clients") rec.income.forEach((i) => { if (i.client_id === id) i.client_id = null; });
     (rec as Record<Table, { id: string }[]>)[table] = rec[table].filter((x) => x.id !== id);
   },
@@ -143,6 +148,23 @@ function seedRecords(t: string, now: string): Records {
     row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null, paid_to: null }),
   );
   rec.debts.push(row({ name: "Пример: долг за квартиру", note: "", total: 10_000_000, payments: [{ date: addDays(t, -2), sum: 3_000_000 }] }));
+  const idea = (title: string, platform: "tg" | "ig" | "yt" | null, format: string, status: number, approved = true, extra = {}) =>
+    row({ ...SCHEMAS.ideas.parse({ title, platform, format, status, approved }), ...extra });
+  rec.ideas.push(
+    idea("Пример: как отвечать на «дорого»", "ig", "reels", 0),
+    idea("Пример: мой день в приложении", null, "", 0, false),
+    idea("Пример: разбор сайта подписчика", "yt", "long", 1, true, { date: addDays(t, 3) }),
+    idea("Пример: чек-лист перед звонком", "ig", "carousel", 3, true, { date: addDays(t, -2), reach: 7600, leads: 3 }),
+  );
+  rec.goals.push(row({
+    title: "Пример: подушка безопасности", horizon: "year" as const, start: addDays(t, -40), deadline: addDays(t, 300), start_val: 0, target: 1,
+    unit: "сум", why: "Спокойствие, если месяц будет пустым", kind: "savings" as const,
+    hist: [{ date: addDays(t, -40), v: 0 }, { date: addDays(t, -10), v: 3_000_000 }],
+    habits: [{ id: "h1", text: "С каждого прихода откладывать 10%", freq: "с каждой оплаты", log: [addDays(t, -6)] }],
+  }), row({
+    title: "Пример: вес 78 кг", horizon: "quarter" as const, start: addDays(t, -30), deadline: addDays(t, 60), start_val: 84, target: 78,
+    unit: "кг", why: "Здоровье", kind: "" as const, hist: [{ date: addDays(t, -30), v: 84 }, { date: addDays(t, -2), v: 82.4 }], habits: [],
+  }));
   rec.meetings.push(row({
     title: "Пример: созвон со Студией «Форма»", date: addDays(t, -1), folder_id: cl.id,
     summary: "Обсудили запуск сайта. Старт после подписания договора.",
