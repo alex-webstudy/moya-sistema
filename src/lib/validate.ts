@@ -9,7 +9,7 @@ export function normProject(p: unknown): string {
 }
 
 /** Coerce untrusted input (form, Claude output) into a valid new task, or null if it has no title. */
-export function toNewTask(x: unknown, fallbackDue: string): NewTask | null {
+export function toNewTask(x: unknown, fallbackDue: string | null = null): NewTask | null {
   const o = (x ?? {}) as Record<string, unknown>;
   const title = clean(o.title);
   if (!title) return null;
@@ -28,7 +28,8 @@ export function toTaskPatch(x: unknown): TaskPatch {
   const p: TaskPatch = {};
   if ("title" in o && clean(o.title)) p.title = clean(o.title);
   if ("project" in o) p.project = normProject(o.project);
-  if ("due" in o && isISODate(o.due)) p.due = o.due;
+  if ("due" in o && (o.due === null || o.due === "")) p.due = null; // no deadline
+  else if ("due" in o && isISODate(o.due)) p.due = o.due;
   if ("time" in o) p.time = isTime(o.time) ? o.time : null;
   if ("done" in o && typeof o.done === "boolean") {
     p.done = o.done;

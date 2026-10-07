@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useApp } from "@/components/store";
 import { ClaudeBtn, Empty } from "@/components/ui";
 import { PLAT, PLATS } from "@/lib/content";
-import { addDays, fd, weekday } from "@/lib/dates";
+import { addDays, fd, fdue, weekday } from "@/lib/dates";
 import { goalCur, goalPct, goalTarget } from "@/lib/goals";
 import { WATER_GOAL } from "@/lib/health";
 import { chargeNext, rub } from "@/lib/money";
@@ -23,7 +23,7 @@ export default function Week() {
 
   // Week numbers.
   const wt = tasks.filter((t) => inW(t.due));
-  const missed = wt.filter((t) => !t.done && t.due < today);
+  const missed = wt.filter((t) => !t.done && !!t.due && t.due < today);
   const pubs = rec.ideas.filter((i) => i.status === 3 && inW(i.date));
   const days = rec.days.filter((d) => inW(d.date) && d.date <= today);
   const planned = [...Array(7)].map((_, i) => addDays(w, i)).filter((d) => d <= last && settings.training.days.includes(weekday(d))).length;
@@ -53,7 +53,7 @@ export default function Week() {
       встречи: meetings.map((m) => m.title),
       цели_в_процентах: goals,
       был_фокус_недели: cur?.focus ?? [],
-      задачи_на_следующую_неделю: tasks.filter((t) => !t.done && inW(addDays(t.due, -7))).map((t) => t.title),
+      задачи_на_следующую_неделю: tasks.filter((t) => !t.done && !!t.due && inW(addDays(t.due, -7))).map((t) => t.title),
       клиенты_ждём: rec.clients.filter((c) => c.waiting).map((c) => `${c.name}: ${c.waiting}`),
     }, null, 1);
   }
@@ -131,7 +131,7 @@ export default function Week() {
         <section className="panel">
           <h2>Фокус этой недели</h2>
           <div className="list">{cur?.focus.length ? cur.focus.map((x, i) => <div className="row" key={i}><span className="pill p-mute">{i + 1}</span><div className="t">{x}</div></div>) : <Empty>Фокус на эту неделю не ставили</Empty>}</div>
-          {missed.length > 0 && <><h2 style={{ marginTop: 14 }}>Не сделано</h2><div className="list">{missed.map((t) => <div className="row" key={t.id}><div className="t"><b>{t.title}</b><span>{t.project} · {fd(t.due, today)}</span></div></div>)}</div></>}
+          {missed.length > 0 && <><h2 style={{ marginTop: 14 }}>Не сделано</h2><div className="list">{missed.map((t) => <div className="row" key={t.id}><div className="t"><b>{t.title}</b><span>{t.project} · {fdue(t.due, today)}</span></div></div>)}</div></>}
         </section>
       </div>
     </>

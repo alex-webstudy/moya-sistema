@@ -15,7 +15,7 @@ export default function Evening() {
   const { day, set } = useDay(today);
   const [title, setTitle] = useState("");
   const tomorrowISO = addDays(today, 1);
-  const todays = tasks.filter((t) => (t.due < today && !t.done) || t.due === today);
+  const todays = tasks.filter((t) => !!t.due && ((t.due < today && !t.done) || t.due === today));
   const open = todays.filter((t) => !t.done);
   const tomorrow = tasks.filter((t) => t.due === tomorrowISO);
   const tr = useTraining();

@@ -28,5 +28,6 @@ describe("parseLines", () => {
 
   it("skips empty lines and headings", () => {
     expect(parseLines("Задачи:\n\n- завтра купить домен\n", today)).toHaveLength(1);
+    expect(parseLines("Обновить портфолио", today)[0].due).toBeNull();
   });
 });

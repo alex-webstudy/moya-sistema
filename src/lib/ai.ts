@@ -92,7 +92,7 @@ export async function askText(prompt: string, picture?: Picture): Promise<string
 const TaskOut = z.object({
   title: z.string(),
   project: z.enum(PROJECTS),
-  due: z.string().describe("YYYY-MM-DD"),
+  due: z.string().describe("YYYY-MM-DD or empty when there is no deadline"),
   time: z.string().describe("HH:MM или пустая строка"),
 });
 
@@ -108,7 +108,7 @@ export async function dictateToTasks(text: string, uploads: Upload[], docs: { na
   content.push({
     type: "text",
     text: `${ABOUT}\n${dateLine()}\n\nРазбери на отдельные задачи всё, что Алексею нужно сделать, что он пообещал или что ему поручили: из текста ниже${uploads.length ? ", из приложенных скриншотов и документов" : ""}${docs.length ? ", из текстовых файлов (каждая правка — отдельная задача)" : ""}.
-Название — коротко, с глагола. Проект — один из списка. Дата YYYY-MM-DD: относительные даты («завтра», «в пятницу») переведи по списку ближайших дней; если даты нет — завтра. Время HH:MM, если названо, иначе пустая строка. Ничего не выдумывай: если задач нет, верни пустой список.
+Название — коротко, с глагола. Проект — один из списка. Дата YYYY-MM-DD: относительные даты («завтра», «в пятницу») переведи по списку ближайших дней; если срока нет — пустая строка, не придумывай дату. Время HH:MM, если названо, иначе пустая строка. Ничего не выдумывай: если задач нет, верни пустой список.
 
 Текст:
 ${text || "(только вложения)"}${docText}`,
@@ -133,7 +133,7 @@ export async function sortThoughts(items: { id: string; text: string }[]) {
     {
       type: "text",
       text: `${ABOUT}\n${dateLine()}\n\nРазложи быстрые мысли. Для каждой реши kind:
-- "task" — нужно что-то сделать: title с глагола, project, due YYYY-MM-DD (по умолчанию завтра), time HH:MM или "".
+- "task" — нужно что-то сделать: title с глагола, project, due YYYY-MM-DD или "", если срока нет, time HH:MM или "".
 - "note" — информация, которую надо сохранить в проекте: title = текст заметки, project.
 - "idea" — идея для контента: title, platform (tg, ig, yt) и format (tg: post|audio|video, ig: carousel|post|reels, yt: shorts|long).
 Поля, которые к виду не относятся, заполни любым допустимым значением. id верни как есть.

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { addDays, diffDays, fd } from "@/lib/dates";
+import { addDays, diffDays, fdue } from "@/lib/dates";
 import { folderOptions, fromPlace, placeLabel, placeOf } from "@/lib/folders";
 import { PROJECTS, type Task } from "@/lib/types";
 import { useApp } from "./store";
@@ -26,11 +26,11 @@ export function PlaceSelect({ value, onChange, extra = [], all, label = "Про�
 /** Change a task's title, date, time or project (a section or a specific project folder). The calendar reads the same task, so both stay in sync. */
 export function TaskEditor({ t, onClose }: { t: Task; onClose: () => void }) {
   const { rec, patchTask, deleteTask, toast } = useApp();
-  const [f, setF] = useState({ title: t.title, due: t.due, time: t.time ?? "", place: placeOf(t) });
+  const [f, setF] = useState({ title: t.title, due: t.due ?? "", time: t.time ?? "", place: placeOf(t) });
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!f.title.trim() || !f.due) return toast("Нужны название и дата");
-    await patchTask(t.id, { title: f.title.trim(), due: f.due, time: f.time || null, ...fromPlace(rec.folders, f.place, t.project) });
+    if (!f.title.trim()) return toast("Нужно название");
+    await patchTask(t.id, { title: f.title.trim(), due: f.due || null, time: f.time || null, ...fromPlace(rec.folders, f.place, t.project) });
     onClose();
   }
   return (
@@ -39,7 +39,7 @@ export function TaskEditor({ t, onClose }: { t: Task; onClose: () => void }) {
         <b>Изменить задачу</b>
         <input className="input" autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} aria-label="Задача" />
         <div className="addbar" style={{ margin: 0 }}>
-          <label className="lbl" style={{ flex: "1 1 150px" }}>Дата<input className="input" type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} required /></label>
+          <label className="lbl" style={{ flex: "1 1 150px" }}>Срок<input className="input" type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} /></label>
           <label className="lbl" style={{ flex: "1 1 110px" }}>Время<input className="input" type="time" value={f.time} onChange={(e) => setF({ ...f, time: e.target.value })} /></label>
           <label className="lbl" style={{ flex: "1 1 100%" }}>Проект
             <PlaceSelect value={f.place} extra={[t.project]} onChange={(place) => setF({ ...f, place })} />
@@ -47,6 +47,7 @@ export function TaskEditor({ t, onClose }: { t: Task; onClose: () => void }) {
         </div>
         <div className="acts">
           <button className="mini" type="button" onClick={async () => { if (confirm("Удалить задачу?")) { await deleteTask(t.id); onClose(); } }}>удалить</button>
+          {f.due && <button className="mini" type="button" onClick={() => setF({ ...f, due: "", time: "" })}>без срока</button>}
           {f.time && <button className="mini" type="button" onClick={() => setF({ ...f, time: "" })}>без времени</button>}
           <span style={{ flex: 1 }} />
           <button className="btn" type="button" onClick={onClose}>Отмена</button>
@@ -60,8 +61,8 @@ export function TaskEditor({ t, onClose }: { t: Task; onClose: () => void }) {
 export function TaskRow({ t, actions = false }: { t: Task; actions?: boolean }) {
   const { today, rec, patchTask, deleteTask } = useApp();
   const [edit, setEdit] = useState(false);
-  const d = diffDays(t.due, today);
-  const late = !t.done && d < 0;
+  const d = t.due ? diffDays(t.due, today) : null;
+  const late = !t.done && d !== null && d < 0;
   return (
     <div className={"row" + (t.done ? " done" : "")}>
       <button className={"chk" + (t.done ? " on" : "")} aria-label={t.done ? "Вернуть в работу" : "Отметить выполненной"} onClick={() => patchTask(t.id, { done: !t.done })} />
@@ -69,7 +70,7 @@ export function TaskRow({ t, actions = false }: { t: Task; actions?: boolean }) 
         <b>{t.title}</b><span>{placeLabel(rec.folders, t)}</span>
       </button>
       <button className={"pill " + (late ? "p-bad" : d === 0 ? "p-acc" : "p-mute")} title="Изменить дату и время" onClick={() => setEdit(true)}>
-        {late ? "просрочено · " : ""}{fd(t.due, today)}{t.time ? " · " + t.time : ""}
+        {late ? "просрочено · " : ""}{fdue(t.due, today)}{t.time ? " · " + t.time : ""}
       </button>
       {actions && !t.done && <button className="mini" onClick={() => patchTask(t.id, { due: addDays(today, 1) })}>на завтра</button>}
       {actions && <button className="mini" aria-label="Удалить" onClick={() => deleteTask(t.id)}>✕</button>}

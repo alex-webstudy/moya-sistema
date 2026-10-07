@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useApp } from "@/components/store";
 import { ClaudeBtn, Empty } from "@/components/ui";
-import { addDays, fd } from "@/lib/dates";
+import { addDays, byDue, fd, fdue } from "@/lib/dates";
 import { folderOptions, folderProject } from "@/lib/folders";
 import { MEETING_PROMPT, parseMeeting, type ParsedMeeting } from "@/lib/meeting";
 import { prepPrompt } from "@/lib/prompts";
@@ -25,8 +25,8 @@ export default function Meetings() {
   const label = (id: string | null) => opts.find((o) => o.id === id)?.label;
 
   const soon = tasks
-    .filter((t) => !t.done && t.due >= today && t.due <= addDays(today, 3) && MEETING_RE.test(t.title))
-    .sort((a, b) => a.due.localeCompare(b.due) || (a.time ?? "99").localeCompare(b.time ?? "99"));
+    .filter((t) => !t.done && !!t.due && t.due >= today && t.due <= addDays(today, 3) && MEETING_RE.test(t.title))
+    .sort((a, b) => byDue(a, b) || (a.time ?? "99").localeCompare(b.time ?? "99"));
 
   function aboutClient(text: string) {
     const low = text.toLowerCase();
@@ -65,9 +65,9 @@ export default function Meetings() {
           <div className="list">
             {soon.map((t) => (
               <div className="row" key={t.id} style={{ flexWrap: "wrap" }}>
-                <span className="amt" style={{ width: 64, flex: "none", color: "var(--muted)", fontSize: 12, lineHeight: 1.4 }}>{fd(t.due, today)}{t.time && <><br />{t.time}</>}</span>
+                <span className="amt" style={{ width: 64, flex: "none", color: "var(--muted)", fontSize: 12, lineHeight: 1.4 }}>{fdue(t.due, today)}{t.time && <><br />{t.time}</>}</span>
                 <div className="t" style={{ flex: "1 1 200px" }}><b>{t.title}</b><span>{t.project}</span></div>
-                <ClaudeBtn label="План в Claude ↗" prompt={() => prepPrompt(t.title, fd(t.due, today) + (t.time ? " " + t.time : ""), aboutClient(t.title))} hint="Claude распишет встречу по твоему скрипту из 12 шагов" />
+                <ClaudeBtn label="План в Claude ↗" prompt={() => prepPrompt(t.title, fdue(t.due, today) + (t.time ? " " + t.time : ""), aboutClient(t.title))} hint="Claude распишет встречу по твоему скрипту из 12 шагов" />
               </div>
             ))}
           </div>
@@ -100,7 +100,7 @@ export default function Meetings() {
         {!parsed && <div className="acts"><span style={{ flex: 1 }} /><button className="btn" type="button" onClick={read}>Показать итоги</button></div>}
         {parsed && (
           <>
-            <MeetBody summary={parsed.summary} points={parsed.points} questions={parsed.questions} tasks={parsed.tasks.map((t) => `${t.title} · ${fd(t.due, today)}${t.time ? " " + t.time : ""}`)} />
+            <MeetBody summary={parsed.summary} points={parsed.points} questions={parsed.questions} tasks={parsed.tasks.map((t) => `${t.title} · ${fdue(t.due, today)}${t.time ? " " + t.time : ""}`)} />
             <div className="acts">
               <span className="sub" style={{ fontSize: 12, flex: 1 }}>{parsed.tasks.length ? `Задачи (${parsed.tasks.length}) попадут в «Задачи»` : "Задач нет"}</span>
               <button className="btn" type="button" onClick={() => setParsed(null)}>Отмена</button>

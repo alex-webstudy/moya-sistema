@@ -11,6 +11,9 @@ describe("validate", () => {
       .toEqual({ title: "Созвон", project: "Клиенты", due: "2026-10-09", time: "12:00" });
     expect(toNewTask({ title: "x", project: "???", due: "пятница", time: "25:00" }, "2026-10-07"))
       .toEqual({ title: "x", project: "Личное", due: "2026-10-07", time: null });
+    // No date means no deadline, not tomorrow.
+    expect(toNewTask({ title: "x" })).toEqual({ title: "x", project: "Личное", due: null, time: null });
+    expect(toTaskPatch({ due: "" })).toEqual({ due: null });
     expect(toNewTask({ title: "  " }, "2026-10-07")).toBeNull();
   });
   it("keeps only known patch fields", () => {
@@ -58,7 +61,7 @@ describe("events", () => {
   it("builds a project report and folder trees", () => {
     const f = (id: string, parent_id: string | null) => ({ id, parent_id, name: id, project: null, created_at: "" });
     expect([...subtree([f("a", null), f("b", "a"), f("c", "b"), f("d", null)], "a")].sort()).toEqual(["a", "b", "c"]);
-    const r = taskReport("Форма", [{ title: "Второе", due: "2026-10-09", done_at: null }, { title: "Первое", due: "2026-10-20", done_at: "2026-10-02T20:00:00Z" }], (d) => d);
+    const r = taskReport("Форма", [{ title: "Второе", due: "2026-10-09", done_at: null, created_at: "" }, { title: "Первое", due: "2026-10-20", done_at: "2026-10-02T20:00:00Z", created_at: "" }], (d) => d);
     // done_at is read in Tashkent time: 20:00 UTC is already the 3rd.
     expect(r.split("\n")).toEqual(["Отчёт по проекту «Форма»", "Период: 2026-10-03 — 2026-10-09", "", "Выполнено задач: 2", "• 2026-10-03 — Первое", "• 2026-10-09 — Второе"]);
   });

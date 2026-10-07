@@ -22,7 +22,7 @@ const plural = (n: number, one: string, few: string, many: string) =>
 
 export function briefLines(s: Snapshot, today: string): string[] {
   const out: string[] = [];
-  const open = s.tasks.filter((t) => !t.done && t.due <= today).sort((a, b) => (a.time ?? "99").localeCompare(b.time ?? "99"));
+  const open = s.tasks.filter((t) => !t.done && !!t.due && t.due <= today).sort((a, b) => (a.time ?? "99").localeCompare(b.time ?? "99"));
   if (open.length) out.push(`Задачи: ${plural(open.length, "дело", "дела", "дел")} · ${open.slice(0, 3).map((t) => (t.time ? t.time + " " : "") + t.title).join("; ")}`);
   if (s.settings.training.days.includes(weekday(today))) out.push(`Тренировка ${s.settings.training.start}–${s.settings.training.end}`);
   const tomorrow = addDays(today, 1);
@@ -46,7 +46,7 @@ export function briefLines(s: Snapshot, today: string): string[] {
 /** The same checklist as the «Вечер» page: done when every step there is green. */
 export function eveningDone(s: Snapshot, today: string): boolean {
   const d = s.rec.days.find((x) => x.date === today);
-  const open = s.tasks.filter((t) => !t.done && t.due <= today);
+  const open = s.tasks.filter((t) => !t.done && !!t.due && t.due <= today);
   const tomorrow = s.tasks.filter((t) => t.due === addDays(today, 1));
   const train = s.settings.training.days.includes(weekday(today));
   return !!d && (open.length === 0 || d.ev_tasks) && s.thoughts.length === 0 && (!train || d.workout !== null) &&

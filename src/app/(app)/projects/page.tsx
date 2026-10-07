@@ -5,7 +5,7 @@ import { Icons } from "@/components/icons";
 import { useApp } from "@/components/store";
 import { TaskRow } from "@/components/TaskRow";
 import { ClaudeBtn, Empty } from "@/components/ui";
-import { addDays, fd } from "@/lib/dates";
+import { byDue, fd } from "@/lib/dates";
 import { folderPath, folderProject, subtree, taskReport } from "@/lib/folders";
 import { PROJECTS } from "@/lib/types";
 
@@ -31,8 +31,8 @@ export default function Projects() {
   // Tasks put into this folder or its subfolders; a folder linked to a section also collects that section's tasks without a folder.
   const tree = id ? subtree(rec.folders, id) : new Set<string>();
   const mine = folder ? tasks.filter((t) => (t.folder_id ? tree.has(t.folder_id) : !!folder.project && t.project === folder.project)) : [];
-  const openTasks = mine.filter((t) => !t.done).sort((a, b) => a.due.localeCompare(b.due) || (a.time ?? "99").localeCompare(b.time ?? "99"));
-  const doneTasks = mine.filter((t) => t.done).sort((a, b) => (b.done_at ?? b.due).localeCompare(a.done_at ?? a.due));
+  const openTasks = mine.filter((t) => !t.done).sort((a, b) => byDue(a, b) || (a.time ?? "99").localeCompare(b.time ?? "99"));
+  const doneTasks = mine.filter((t) => t.done).sort((a, b) => (b.done_at ?? b.due ?? b.created_at).localeCompare(a.done_at ?? a.due ?? a.created_at));
   const count = (fid: string) => rec.folders.filter((f) => f.parent_id === fid).length + rec.notes.filter((n) => n.folder_id === fid).length + rec.meetings.filter((m) => m.folder_id === fid).length;
 
   function go(fid: string | null) {
@@ -57,7 +57,7 @@ export default function Projects() {
   async function addTask(e: React.FormEvent) {
     e.preventDefault();
     if (!folder || !task.title.trim()) return;
-    const due = task.due || addDays(today, 1);
+    const due = task.due || null;
     if ((await addTasks([{ title: task.title.trim(), due, time: task.time || null, project: project ?? "Личное", folder_id: folder.id }])).length) setTask({ title: "", due: "", time: "" });
   }
   async function finishReport() {
@@ -143,7 +143,7 @@ export default function Projects() {
             </h2>
             <form className="addbar" onSubmit={addTask}>
               <input className="input" style={{ flex: "1 1 200px" }} placeholder="Новая задача по проекту" value={task.title} onChange={(e) => setTask({ ...task, title: e.target.value })} />
-              <input className="input" type="date" aria-label="Дата (без даты — завтра)" title="Без даты задача ставится на завтра" value={task.due} onChange={(e) => setTask({ ...task, due: e.target.value })} />
+              <input className="input" type="date" aria-label="Срок (можно без срока)" title="Без даты задача будет без срока" value={task.due} onChange={(e) => setTask({ ...task, due: e.target.value })} />
               <input className="input" type="time" aria-label="Время" value={task.time} onChange={(e) => setTask({ ...task, time: e.target.value })} />
               <button className="btn pri">Добавить</button>
             </form>

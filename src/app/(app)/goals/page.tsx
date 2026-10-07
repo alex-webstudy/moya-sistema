@@ -4,7 +4,7 @@ import { Icons } from "@/components/icons";
 import { useApp } from "@/components/store";
 import { TaskRow } from "@/components/TaskRow";
 import { ClaudeBtn, CurSelect, Empty, Fold } from "@/components/ui";
-import { addDays, fd } from "@/lib/dates";
+import { addDays, byDue, fd } from "@/lib/dates";
 import { fmtGoal, GCOL, goalCur, goalPct, goalPlan, goalsPrompt, goalTarget, HORIZON, nextStepsPrompt, parseGoals, type GoalDraft } from "@/lib/goals";
 import { chargeNext, monthKey, rub, toUZS, type Cur } from "@/lib/money";
 import type { Goal } from "@/lib/records";
@@ -186,7 +186,7 @@ function Detail({ g, onBack }: { g: Goal; onBack: () => void }) {
   const { rec, tasks, today, patchRec, removeRec, addTasks, settings, toast } = useApp();
   const monthly = useMonthly();
   const tg = goalTarget(g, monthly), cur = goalCur(g), pc = Math.round(goalPct(g, tg, cur)), P = goalPlan(g, tg, today);
-  const steps = tasks.filter((t) => t.goal_id === g.id).sort((a, b) => Number(a.done) - Number(b.done) || a.due.localeCompare(b.due));
+  const steps = tasks.filter((t) => t.goal_id === g.id).sort((a, b) => Number(a.done) - Number(b.done) || byDue(a, b));
   const [val, setVal] = useState("");
   const [cur$, setCur$] = useState<Cur>("uzs");
   const [answer, setAnswer] = useState("");

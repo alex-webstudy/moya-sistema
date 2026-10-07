@@ -1,6 +1,6 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { AIError, aiEnabled, dictateToTasks, type Upload } from "@/lib/ai";
-import { addDays, fd, todayISO } from "@/lib/dates";
+import { fdue, todayISO } from "@/lib/dates";
 import { briefLines } from "@/lib/reminders";
 import { loadSnapshot } from "@/lib/snapshot";
 import { sortInto } from "@/lib/sort";
@@ -60,10 +60,10 @@ async function handle(m: TgMessage) {
     const pdf = file.mime_type === "application/pdf";
     const upload: Upload = { kind: pdf ? "pdf" : "image", media_type: pdf ? "application/pdf" : file.mime_type ?? "image/jpeg", data: await download(file.file_id), name: file.file_name ?? "снимок" };
     const today = todayISO();
-    const tasks = (await dictateToTasks(text, [upload], [])).map((t) => toNewTask(t, addDays(today, 1))).filter((t): t is NewTask => !!t);
+    const tasks = (await dictateToTasks(text, [upload], [])).map((t) => toNewTask(t)).filter((t): t is NewTask => !!t);
     if (!tasks.length) return send(chat, "Задач на снимке не нашёл.");
     await store.addTasks(tasks);
-    return send(chat, `Добавил задачи (${tasks.length}):\n` + tasks.map((t) => `• ${t.title} · ${t.project}, ${fd(t.due, today)}${t.time ? " " + t.time : ""}`).join("\n"));
+    return send(chat, `Добавил задачи (${tasks.length}):\n` + tasks.map((t) => `• ${t.title} · ${t.project}, ${fdue(t.due, today)}${t.time ? " " + t.time : ""}`).join("\n"));
   }
 
   if (!text) return;
