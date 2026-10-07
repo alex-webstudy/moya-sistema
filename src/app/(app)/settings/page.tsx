@@ -1,17 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/components/store";
+import { copy } from "@/components/ui";
 import type { Settings } from "@/lib/records";
 
 const THEMES: [Settings["theme"], string][] = [["auto", "Авто"], ["light", "Светлая"], ["dark", "Тёмная"]];
 const REMINDERS: [string, string, string][] = [
-  ["Утренний бриф", "План дня, встречи, тренировка, списания", "11:00"],
-  ["Вечерний разбор", "Повтор каждые 30 мин, пока не заполнишь", "21:00"],
-  ["Итоги недели и план", "Воскресенье, плюс замеры", "Вс 20:00"],
-  ["Списания по кредитам и подпискам", "За день до списания", "11:00"],
-  ["Отчёт и взносы ИП", "9-го вечером и 10-го утром", "10 числа"],
-  ["Финансовый разбор месяца", "Как поднять доход или срезать расходы", "1 числа"],
-  ["Пора написать клиенту", "Жду ответа или тишина 5+ дней", "11:00"],
+  ["План на день", "Дела, тренировка, списания на сегодня и завтра, кому выставить счёт и написать", "11:00"],
+  ["Вечерний разбор", "Повтор каждые 30 мин до 22:30, пока не заполнишь", "21:00"],
+  ["Итоги недели", "Итоги, 3 главных дела и замеры", "Вс 20:00"],
+  ["Дела со временем", "За 15 минут до начала", "по задаче"],
+  ["Отчёт и взносы ИП", "Внутри плана на день 9-го и 10-го", "10 числа"],
+  ["Финансовый разбор месяца", "Внутри плана на день 1-го числа", "1 числа"],
 ];
 
 const DAYS: [number, string][] = [[1, "Пн"], [2, "Вт"], [3, "Ср"], [4, "Чт"], [5, "Пт"], [6, "Сб"], [0, "Вс"]];
@@ -95,12 +95,12 @@ export default function SettingsPage() {
         </section>
         <section className="panel">
           <h2>Напоминания</h2>
-          <div className="list">
+          <Push />
+          <div className="list" style={{ marginTop: 12 }}>
             {REMINDERS.map(([n, d, t]) => (
               <div className="row" key={n}><div className="t"><b>{n}</b><span>{d}</span></div><span className="amt">{t}</span></div>
             ))}
           </div>
-          <div className="sub" style={{ fontSize: 12, marginTop: 8 }}>Начнут приходить, когда подключим Telegram-бот</div>
         </section>
         <section className="panel">
           <h2>Вход</h2>
@@ -108,6 +108,93 @@ export default function SettingsPage() {
           <button className="btn" onClick={logout}>Выйти</button>
         </section>
       </div>
+    </>
+  );
+}
+
+const fromB64 = (s: string) => {
+  const b = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(b, (c) => c.charCodeAt(0));
+};
+
+function deviceName() {
+  const ua = navigator.userAgent;
+  return /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Браузер";
+}
+
+/** Turns push on for this device and shows the one-time schedule SQL. */
+function Push() {
+  const { toast } = useApp();
+  const supported = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const [info, setInfo] = useState<{ publicKey: string; cronSql: string; devices: { endpoint: string; device: string }[] } | null>(null);
+  const [mine, setMine] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [sql, setSql] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/push/setup").then((r) => (r.ok ? r.json() : null)).then(setInfo, () => {});
+    if (supported) navigator.serviceWorker.getRegistration().then((r) => r?.pushManager.getSubscription()).then((s) => setMine(s?.endpoint ?? null), () => {});
+  }, [supported]);
+
+  async function on() {
+    if (!info) return;
+    setBusy(true);
+    try {
+      if ((await Notification.requestPermission()) !== "granted") return toast("Уведомления запрещены: разреши их в настройках браузера");
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: fromB64(info.publicKey) }));
+      const res = await fetch("/api/push/subscribe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...sub.toJSON(), device: deviceName() }) });
+      if (!res.ok) return toast(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Не получилось включить");
+      setMine(sub.endpoint);
+      setInfo({ ...info, devices: [...info.devices.filter((d) => d.endpoint !== sub.endpoint), { endpoint: sub.endpoint, device: deviceName() }] });
+      toast("Напоминания включены на этом устройстве");
+    } catch {
+      toast("Не получилось включить уведомления");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function off() {
+    const sub = await (await navigator.serviceWorker.getRegistration())?.pushManager.getSubscription();
+    if (sub) {
+      await fetch("/api/push/subscribe", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+      await sub.unsubscribe();
+    }
+    if (info) setInfo({ ...info, devices: info.devices.filter((d) => d.endpoint !== mine) });
+    setMine(null);
+    toast("Напоминания на этом устройстве выключены");
+  }
+  async function test() {
+    const r = await fetch("/api/push/test", { method: "POST" });
+    toast(r.ok ? "Отправил, сейчас придёт" : (((await r.json().catch(() => ({}))) as { error?: string }).error ?? "Не получилось"));
+  }
+
+  const n = info?.devices.length ?? 0;
+  return (
+    <>
+      {!supported ? (
+        <div className="sub">На iPhone уведомления работают, только если приложение добавлено на экран «Домой»: в Safari нажми «Поделиться» → «На экран „Домой“» и открой «Моя система» оттуда.</div>
+      ) : (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {mine ? <button className="btn" onClick={off}>Выключить на этом устройстве</button>
+            : <button className="btn pri" disabled={busy || !info} onClick={on}>{busy ? "Включаю…" : "Включить на этом устройстве"}</button>}
+          {n > 0 && <button className="btn" onClick={test}>Прислать пробное</button>}
+          <span className="sub" style={{ fontSize: 12 }}>{n ? "Включено: " + info!.devices.map((d) => d.device || "устройство").join(", ") : "Пока ни на одном устройстве"}</span>
+        </div>
+      )}
+      {info && (
+        <div style={{ marginTop: 12 }}>
+          <button className="mini" onClick={() => setSql(!sql)}>{sql ? "▴" : "▾"} Расписание: один раз запустить в Supabase</button>
+          {sql && (
+            <>
+              <div className="sub" style={{ fontSize: 12, margin: "6px 0" }}>Без этого напоминания не придут. Скопируй и запусти в Supabase → SQL Editor. В запросе ключ доступа к напоминаниям: никому его не пересылай.</div>
+              <pre className="input" style={{ whiteSpace: "pre-wrap", fontSize: 11, maxHeight: 180, overflow: "auto" }}>{info.cronSql}</pre>
+              <button className="btn" onClick={() => copy(info.cronSql, toast)}>Копировать</button>
+            </>
+          )}
+        </div>
+      )}
     </>
   );
 }

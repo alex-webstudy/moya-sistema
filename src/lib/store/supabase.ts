@@ -2,7 +2,7 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Day, Records, Settings, SettingKey, Table } from "../records";
 import type { Idea, NewTask, Note, Platform, Task, TaskPatch, Thought } from "../types";
-import type { Store } from "./types";
+import type { PushSub, Store } from "./types";
 
 // Server-only: uses the service role key. Tables have RLS on with no policies,
 // so the anon key can read nothing; every request goes through our authenticated API.
@@ -85,5 +85,20 @@ export const supabaseStore: Store = {
   },
   async setSetting<K extends SettingKey>(key: K, value: Settings[K]) {
     check(await sb().from("settings").upsert({ id: key, value, updated_at: new Date().toISOString() }));
+  },
+  async listPushSubs() {
+    return check(await sb().from("push_subs").select("endpoint, p256dh, auth, device")) as PushSub[];
+  },
+  async savePushSub(sub: PushSub) {
+    check(await sb().from("push_subs").upsert(sub));
+  },
+  async removePushSub(endpoint: string) {
+    check(await sb().from("push_subs").delete().eq("endpoint", endpoint));
+  },
+  async markSent(key: string) {
+    const r = await sb().from("push_log").insert({ key });
+    if (r.error?.code === "23505") return false; // unique_violation: already sent
+    check(r);
+    return true;
   },
 };
