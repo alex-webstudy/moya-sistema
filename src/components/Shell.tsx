@@ -9,32 +9,32 @@ const NAV: { href: string; name: string; ico: React.ReactNode; count?: "thoughts
   { href: "/", name: "Сегодня", ico: Icons.today },
   { href: "/thoughts", name: "Быстрая мысль", ico: Icons.plus, count: "thoughts" },
   { href: "/calendar", name: "Календарь", ico: Icons.cal },
-  { href: "/meetings", name: "Встречи", ico: Icons.meet, soon: true },
+  { href: "/meetings", name: "Встречи", ico: Icons.meet },
   { href: "/goals", name: "Цели", ico: Icons.goal, soon: true },
-  { href: "/projects", name: "Проекты", ico: Icons.proj, soon: true },
+  { href: "/projects", name: "Проекты", ico: Icons.proj },
   { href: "/tasks", name: "Задачи", ico: Icons.tasks, count: "tasks" },
   { href: "/content", name: "Контент", ico: Icons.content, soon: true },
-  { href: "/clients", name: "Клиенты", ico: Icons.clients, soon: true },
-  { href: "/finance", name: "Финансы", ico: Icons.fin, soon: true },
+  { href: "/clients", name: "Клиенты", ico: Icons.clients },
+  { href: "/finance", name: "Финансы", ico: Icons.fin },
   { href: "/health", name: "Здоровье", ico: Icons.health, soon: true },
   { href: "/lists", name: "Списки", ico: Icons.list, soon: true },
   { href: "/week", name: "Итоги недели", ico: Icons.week, soon: true },
   { href: "/evening", name: "Вечер", ico: Icons.evening, soon: true },
   { href: "/vault", name: "Пароли", ico: Icons.vault, soon: true },
-  { href: "/settings", name: "Настройки", ico: Icons.gear, soon: true },
+  { href: "/settings", name: "Настройки", ico: Icons.gear },
 ];
 
-/** Auto theme: light from 7:00 to 19:00, dark in the evening. */
-function useAutoTheme() {
+/** Theme from Settings; auto is light from 7:00 to 19:00 and dark in the evening. */
+function useTheme(theme: "auto" | "light" | "dark") {
   useEffect(() => {
     const apply = () => {
       const h = new Date().getHours();
-      document.body.classList.toggle("light", h >= 7 && h < 19);
+      document.body.classList.toggle("light", theme === "light" || (theme === "auto" && h >= 7 && h < 19));
     };
     apply();
     const t = setInterval(apply, 60_000);
     return () => clearInterval(t);
-  }, []);
+  }, [theme]);
 }
 
 export function QuickThought({ onClose }: { onClose: () => void }) {
@@ -63,7 +63,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const app = useApp();
   const path = usePathname();
   const [sheet, setSheet] = useState(false);
-  useAutoTheme();
+  useTheme(app.settings.theme);
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setSheet(false);
     addEventListener("keydown", esc);
@@ -91,6 +91,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </aside>
       <main>
         {app.demo && <div className="banner">Демо-режим: база не подключена, данные сбросятся после перезапуска</div>}
+        {app.migrate && <div className="banner" style={{ borderColor: "var(--warn)" }}>Новые разделы ещё не подключены к базе: выполни SQL из сообщения Claude в Supabase (SQL Editor → Run), потом обнови страницу</div>}
         {app.error && <div className="banner" style={{ borderColor: "var(--bad)" }}>{app.error}</div>}
         {app.loaded ? children : <div className="sub">Загружаю…</div>}
       </main>

@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Records, Settings, SettingKey, Table } from "../records";
 import type { Idea, NewTask, Note, Platform, Task, TaskPatch, Thought } from "../types";
 import type { Store } from "./types";
 
@@ -46,5 +47,26 @@ export const supabaseStore: Store = {
   },
   async addIdea(title: string, platform: Platform, format: string) {
     return check(await sb().from("ideas").insert({ title, platform, format }).select().single()) as Idea;
+  },
+  async list<T extends Table>(table: T) {
+    return check(await sb().from(table).select("*").order("created_at")) as Records[T];
+  },
+  async insert<T extends Table>(table: T, rows: object[]) {
+    if (!rows.length) return [] as unknown as Records[T];
+    return check(await sb().from(table).insert(rows).select()) as Records[T];
+  },
+  async update<T extends Table>(table: T, id: string, patch: object) {
+    const rows = check(await sb().from(table).update(patch).eq("id", id).select()) as Records[T];
+    return rows[0] ?? null;
+  },
+  async remove(table: Table, id: string) {
+    check(await sb().from(table).delete().eq("id", id));
+  },
+  async getSettings() {
+    const rows = check(await sb().from("settings").select("id, value")) as { id: string; value: unknown }[];
+    return Object.fromEntries(rows.map((r) => [r.id, r.value])) as Partial<Settings>;
+  },
+  async setSetting<K extends SettingKey>(key: K, value: Settings[K]) {
+    check(await sb().from("settings").upsert({ id: key, value, updated_at: new Date().toISOString() }));
   },
 };
