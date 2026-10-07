@@ -4,12 +4,11 @@ import { useApp } from "@/components/store";
 import { TaskRow } from "@/components/TaskRow";
 import { addDays, fd, weekday } from "@/lib/dates";
 import { eventsOn, todayTasks } from "@/lib/events";
-import { TRAINING_DAYS } from "@/lib/types";
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 export default function Today() {
-  const { tasks, thoughts, today } = useApp();
+  const { tasks, thoughts, today, settings } = useApp();
   const h = new Date().getHours();
   const greet = h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер";
   const dateStr = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
@@ -20,7 +19,7 @@ export default function Today() {
       <div className="head">
         <div>
           <h1>{greet}, Алексей</h1>
-          <div className="sub">{cap(dateStr)}{TRAINING_DAYS.includes(weekday(today)) ? " · сегодня тренировка" : ""}</div>
+          <div className="sub">{cap(dateStr)}{settings.training.days.includes(weekday(today)) ? ` · тренировка в ${settings.training.start}` : ""}</div>
         </div>
       </div>
       <div className="kpis">
@@ -37,7 +36,7 @@ export default function Today() {
           <div className="list">
             {[1, 2, 3].map((n) => {
               const day = addDays(today, n);
-              const ev = eventsOn(day, tasks);
+              const ev = eventsOn(day, tasks, settings.training);
               return (
                 <div className="row" style={{ alignItems: "flex-start" }} key={day}>
                   <div style={{ width: 72, flex: "none", fontWeight: 600 }}>{cap(fd(day, today))}</div>

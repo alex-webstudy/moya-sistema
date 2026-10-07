@@ -2,20 +2,25 @@
 import { useState } from "react";
 import { useApp } from "@/components/store";
 import { dayNum, fd, MON, MONN, monthGrid, monthOf, WD, weekDays, weekday } from "@/lib/dates";
+import { TaskEditor } from "@/components/TaskRow";
 import { eventsOn, KC, type CalEvent } from "@/lib/events";
 
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
-function Ev({ e }: { e: CalEvent }) {
-  return (
-    <div className="ev" style={{ ["--c" as string]: e.color, opacity: e.done ? 0.55 : 1 }}>
-      {e.time && <span className="tm">{e.time}</span>}<span>{e.title}</span>
-    </div>
-  );
+// Task events open the task editor: changing the time here changes the task itself.
+function Ev({ e, onEdit }: { e: CalEvent; onEdit: (id: string) => void }) {
+  const style = { ["--c" as string]: e.color, opacity: e.done ? 0.55 : 1 };
+  const body = <>{e.time && <span className="tm">{e.time}</span>}<span>{e.title}</span></>;
+  return e.taskId ? (
+    <button type="button" className="ev" style={{ ...style, textAlign: "left", border: 0, color: "inherit", cursor: "pointer" }} title="Изменить дату и время" onClick={(x) => { x.stopPropagation(); onEdit(e.taskId!); }}>{body}</button>
+  ) : <div className="ev" style={style}>{body}</div>;
 }
 
 export default function Calendar() {
-  const { tasks, today } = useApp();
+  const { tasks, today, settings } = useApp();
+  const [editId, setEditId] = useState<string | null>(null);
+  const editing = tasks.find((t) => t.id === editId);
+  const editor = editing && <TaskEditor t={editing} onClose={() => setEditId(null)} />;
   const [mode, setMode] = useState<"week" | "month">("week");
   const [off, setOff] = useState(0);
   const [sel, setSel] = useState<string | null>(null);
@@ -30,7 +35,7 @@ export default function Calendar() {
   );
   const head = (
     <div className="head">
-      <div><h1>Календарь</h1><div className="sub">Задачи по времени и тренировки. Позже сюда добавятся публикации, списания, оплаты и Google Календарь</div></div>
+      <div><h1>Календарь</h1><div className="sub">Задачи по времени и тренировки. Нажми на задачу, чтобы перенести её. Позже сюда добавятся публикации, списания, оплаты и Google Календарь</div></div>
       <div className="tabs" style={{ margin: 0 }}>
         {(["week", "month"] as const).map((k) => (
           <button key={k} className={mode === k ? "on" : ""} onClick={() => { setMode(k); setOff(0); }}>{k === "week" ? "Неделя" : "Месяц"}</button>
@@ -55,22 +60,23 @@ export default function Calendar() {
         {legend}
         <div className="week">
           {days.map((day) => {
-            const ev = eventsOn(day, tasks);
+            const ev = eventsOn(day, tasks, settings.training);
             return (
               <div key={day} className={"wday" + (day === today ? " today" : "")}>
                 <div className="dh"><span>{WD[weekday(day)]}{day === today ? " · сегодня" : ""}</span><b>{dayNum(day)}</b></div>
-                {ev.length ? ev.map((e, i) => <Ev key={i} e={e} />) : <span className="sub" style={{ fontSize: 12 }}>свободно</span>}
+                {ev.length ? ev.map((e, i) => <Ev key={i} e={e} onEdit={setEditId} />) : <span className="sub" style={{ fontSize: 12 }}>свободно</span>}
               </div>
             );
           })}
         </div>
+        {editor}
       </>
     );
   }
 
   const g = monthGrid(today, off);
   const selected = sel && g.days.includes(sel) ? sel : off === 0 ? today : g.days[0];
-  const sev = eventsOn(selected, tasks);
+  const sev = eventsOn(selected, tasks, settings.training);
   return (
     <>
       {head}
@@ -82,7 +88,7 @@ export default function Calendar() {
             {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((w) => <div className="wd" key={w}>{w}</div>)}
             {Array.from({ length: g.lead }, (_, i) => <div key={"b" + i} />)}
             {g.days.map((day) => {
-              const ev = eventsOn(day, tasks);
+              const ev = eventsOn(day, tasks, settings.training);
               return (
                 <div key={day} className={"day" + (day === today ? " today" : "") + (day === selected ? " sel" : "")} onClick={() => setSel(day)} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && setSel(day)}>
                   <span className="n">{dayNum(day)}</span>
@@ -95,9 +101,10 @@ export default function Calendar() {
         </section>
         <section className="panel">
           <h2>{cap(fd(selected, today))}</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{sev.length ? sev.map((e, i) => <Ev key={i} e={e} />) : <div className="sub">Ничего не запланировано</div>}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{sev.length ? sev.map((e, i) => <Ev key={i} e={e} onEdit={setEditId} />) : <div className="sub">Ничего не запланировано</div>}</div>
         </section>
       </div>
+      {editor}
     </>
   );
 }

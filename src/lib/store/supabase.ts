@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Records, Settings, SettingKey, Table } from "../records";
+import type { Day, Records, Settings, SettingKey, Table } from "../records";
 import type { Idea, NewTask, Note, Platform, Task, TaskPatch, Thought } from "../types";
 import type { Store } from "./types";
 
@@ -61,6 +61,11 @@ export const supabaseStore: Store = {
   },
   async remove(table: Table, id: string) {
     check(await sb().from(table).delete().eq("id", id));
+  },
+  async upsertDay(date: string, patch: object) {
+    // On conflict only the sent columns are updated, so fields set elsewhere survive.
+    const rows = check(await sb().from("days").upsert({ ...patch, date }, { onConflict: "date" }).select()) as Day[];
+    return rows[0];
   },
   async getSettings() {
     const rows = check(await sb().from("settings").select("id, value")) as { id: string; value: unknown }[];

@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { DEFAULT_SETTINGS, TABLES, type Records, type SettingKey, type Settings, type Table } from "@/lib/records";
+import { DEFAULT_SETTINGS, SCHEMAS, TABLES, type Day, type Records, type SettingKey, type Settings, type Table } from "@/lib/records";
 import type { NewTask, Task, TaskPatch, Thought } from "@/lib/types";
 
 interface State {
@@ -144,6 +144,26 @@ function useAppState() {
     } catch (e) { fail(e); return false; }
   }, [fail, reload, setRows]);
 
+  // Health day by date: optimistic, created on first write.
+  const patchDay = useCallback(async (date: string, patch: Partial<Day>) => {
+    let before: Day | undefined;
+    setRows("days", (r) => {
+      before = r.find((d) => d.date === date);
+      const base = before ?? ({ ...SCHEMAS.days.parse({ date }), id: "new-" + date, created_at: new Date().toISOString() } as Day);
+      return [...r.filter((d) => d.date !== date), { ...base, ...patch }];
+    });
+    try {
+      const { day } = await api<{ day: Day }>(`/api/day/${date}`, { method: "PUT", body: patch });
+      setRows("days", (r) => r.map((d) => (d.date === date ? { ...day, ...d, id: day.id } : d)));
+      return true;
+    } catch (e) {
+      const b = before;
+      setRows("days", (r) => (b ? r.map((d) => (d.date === date ? b : d)) : r.filter((d) => d.date !== date)));
+      fail(e);
+      return false;
+    }
+  }, [fail, setRows]);
+
   const setSetting = useCallback(async <K extends SettingKey>(key: K, value: Settings[K]) => {
     let before: Settings[K] | undefined;
     setS((x) => ((before = x.settings[key]), { ...x, settings: { ...x.settings, [key]: value } }));
@@ -158,8 +178,8 @@ function useAppState() {
   }, [fail]);
 
   return useMemo(
-    () => ({ ...s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate, addRec, patchRec, removeRec, setSetting }),
-    [s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate, addRec, patchRec, removeRec, setSetting],
+    () => ({ ...s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate, addRec, patchRec, removeRec, patchDay, setSetting }),
+    [s, toastMsg, toast, reload, addTasks, patchTask, deleteTask, addThought, deleteThought, sortThoughts, dictate, addRec, patchRec, removeRec, patchDay, setSetting],
   );
 }
 

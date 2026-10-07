@@ -1,5 +1,5 @@
 import { addDays, todayISO } from "../dates";
-import { TABLES, type Records, type Settings, type SettingKey, type Table } from "../records";
+import { SCHEMAS, TABLES, type Day, type Records, type Settings, type SettingKey, type Table } from "../records";
 import type { Idea, NewTask, Platform, Task, TaskPatch, Thought } from "../types";
 import type { Store } from "./types";
 
@@ -97,6 +97,16 @@ export const memoryStore: Store = {
     }
     if (table === "clients") rec.income.forEach((i) => { if (i.client_id === id) i.client_id = null; });
     (rec as Record<Table, { id: string }[]>)[table] = rec[table].filter((x) => x.id !== id);
+  },
+  async upsertDay(date: string, patch: object) {
+    const days = db().rec.days;
+    let d = days.find((x) => x.date === date);
+    if (!d) {
+      d = { ...(SCHEMAS.days.parse({ date }) as Day), id: crypto.randomUUID(), created_at: new Date().toISOString() };
+      days.push(d);
+    }
+    Object.assign(d, patch);
+    return { ...d };
   },
   async getSettings() { return { ...db().settings }; },
   async setSetting<K extends SettingKey>(key: K, value: Settings[K]) { db().settings[key] = value; },
