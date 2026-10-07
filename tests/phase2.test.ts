@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chargeNext, nextCharge, paymentsLeft, toUZS } from "../src/lib/money";
+import { chargeNext, dueThisMonth, nextCharge, paymentsLeft, prevCharge, toUZS } from "../src/lib/money";
 import { parseMeeting } from "../src/lib/meeting";
 import { parsePatch } from "../src/lib/records";
 
@@ -61,10 +61,29 @@ describe("instalments", () => {
   it("starts later, ends, and counts payments left", () => {
     expect(chargeNext(c(null, "2026-10-18"), "2026-10-07")).toBe("2026-10-18");
     expect(paymentsLeft(c(null, "2026-10-18"), "2026-10-07")).toBe(1);
-    expect(chargeNext(c(null, "2026-10-18"), "2026-10-19")).toBeNull();
-    expect(paymentsLeft(c(null, "2026-10-18"), "2026-10-19")).toBe(0);
+    // Last payment passed but not confirmed: still due; confirmed: closed.
+    expect(chargeNext(c(null, "2026-10-18"), "2026-10-19")).toBe("2026-10-18");
+    expect(chargeNext({ ...c(null, "2026-10-18"), paid_to: "2026-10-18" }, "2026-10-19")).toBeNull();
+    expect(paymentsLeft({ ...c(null, "2026-10-18"), paid_to: "2026-10-18" }, "2026-10-19")).toBe(0);
+    expect(chargeNext(c(null, "2026-09-18"), "2026-10-07")).toBeNull();
     expect(chargeNext(c("2026-11-04", "2027-01-04", 4), "2026-10-07")).toBe("2026-11-04");
     expect(paymentsLeft(c("2026-11-04", "2027-01-04", 4), "2026-10-07")).toBe(3);
     expect(paymentsLeft(c(null, null), "2026-10-07")).toBeNull();
+  });
+});
+
+describe("confirmed payments", () => {
+  const sub = { day: 3, start: null, until: null };
+  it("keeps this month's payment due until confirmed, then moves on", () => {
+    expect(dueThisMonth(sub, "2026-10-07")).toBe("2026-10-03");
+    const paid = { ...sub, paid_to: "2026-10-03" };
+    expect(dueThisMonth(paid, "2026-10-07")).toBeNull();
+    expect(chargeNext(paid, "2026-10-07")).toBe("2026-11-03");
+    expect(dueThisMonth(paid, "2026-11-01")).toBe("2026-11-03");
+    expect(prevCharge(sub, "2026-10-03")).toBe("2026-09-03");
+    expect(prevCharge({ day: 4, start: "2026-11-04", until: null }, "2026-11-04")).toBeNull();
+  });
+  it("a payment starting next month is not due this month", () => {
+    expect(dueThisMonth({ day: 1, start: "2026-11-01", until: "2026-12-01" }, "2026-10-07")).toBeNull();
   });
 });

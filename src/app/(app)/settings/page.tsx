@@ -14,6 +14,36 @@ const REMINDERS: [string, string, string][] = [
   ["Пора написать клиенту", "Жду ответа или тишина 5+ дней", "11:00"],
 ];
 
+const DAYS: [number, string][] = [[1, "Пн"], [2, "Вт"], [3, "Ср"], [4, "Чт"], [5, "Пт"], [6, "Сб"], [0, "Вс"]];
+
+function TrainingForm() {
+  const { settings, setSetting, toast } = useApp();
+  const [t, setT] = useState(settings.training);
+  const [norm, setNorm] = useState(String(settings.kcal_norm));
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!t.start || !t.end || t.end <= t.start) return toast("Конец тренировки должен быть позже начала");
+    const n = Math.round(Number(norm));
+    if (!(n >= 800 && n <= 6000)) return toast("Норма калорий от 800 до 6000");
+    if ((await setSetting("training", t)) && (n === settings.kcal_norm || (await setSetting("kcal_norm", n)))) toast("Сохранено");
+  }
+  return (
+    <form onSubmit={save} className="form">
+      <div className="tabs" style={{ margin: 0 }}>
+        {DAYS.map(([d, n]) => (
+          <button type="button" key={d} className={t.days.includes(d) ? "on" : ""} onClick={() => setT({ ...t, days: t.days.includes(d) ? t.days.filter((x) => x !== d) : [...t.days, d] })}>{n}</button>
+        ))}
+      </div>
+      <div className="addbar" style={{ margin: 0, alignItems: "flex-end" }}>
+        <label className="lbl" style={{ flex: "0 1 120px" }}>Начало<input className="input" type="time" value={t.start} onChange={(e) => setT({ ...t, start: e.target.value })} /></label>
+        <label className="lbl" style={{ flex: "0 1 120px" }}>Конец<input className="input" type="time" value={t.end} onChange={(e) => setT({ ...t, end: e.target.value })} /></label>
+        <label className="lbl" style={{ flex: "0 1 140px" }}>Норма, ккал<input className="input" inputMode="numeric" value={norm} onChange={(e) => setNorm(e.target.value)} /></label>
+        <button className="btn pri">Сохранить</button>
+      </div>
+    </form>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, setSetting, toast } = useApp();
   const [usd, setUsd] = useState(String(settings.rates.usd));
@@ -51,6 +81,11 @@ export default function SettingsPage() {
             <span style={{ marginLeft: 8 }}>1 ₽ =</span><input className="input mono-in" inputMode="decimal" value={rub} onChange={(e) => setRub(e.target.value)} aria-label="Курс рубля" /><span>сум</span>
             <button className="btn pri">Сохранить</button>
           </form>
+        </section>
+        <section className="panel">
+          <h2>Тренировки и питание</h2>
+          <div className="sub" style={{ marginBottom: 8 }}>Дни и время тренировок видны в календаре, на главной и в вечернем разборе</div>
+          <TrainingForm />
         </section>
         <section className="panel">
           <h2>Напоминания</h2>

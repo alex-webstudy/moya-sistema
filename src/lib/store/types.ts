@@ -1,4 +1,4 @@
-import type { Records, Settings, SettingKey, Table } from "../records";
+import type { Day, Records, Settings, SettingKey, Table } from "../records";
 import type { Idea, NewTask, Note, Platform, Task, TaskPatch, Thought } from "../types";
 
 export interface Store {
@@ -17,6 +17,8 @@ export interface Store {
   insert<T extends Table>(table: T, rows: object[]): Promise<Records[T]>;
   update<T extends Table>(table: T, id: string, patch: object): Promise<Records[T][number] | null>;
   remove(table: Table, id: string): Promise<void>;
+  /** Health day by date: insert or update only the given fields. */
+  upsertDay(date: string, patch: object): Promise<Day>;
   getSettings(): Promise<Partial<Settings>>;
   setSetting<K extends SettingKey>(key: K, value: Settings[K]): Promise<void>;
 }

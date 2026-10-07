@@ -16,10 +16,10 @@ const NAV: { href: string; name: string; ico: React.ReactNode; count?: "thoughts
   { href: "/content", name: "Контент", ico: Icons.content, soon: true },
   { href: "/clients", name: "Клиенты", ico: Icons.clients },
   { href: "/finance", name: "Финансы", ico: Icons.fin },
-  { href: "/health", name: "Здоровье", ico: Icons.health, soon: true },
-  { href: "/lists", name: "Списки", ico: Icons.list, soon: true },
+  { href: "/health", name: "Здоровье", ico: Icons.health },
+  { href: "/lists", name: "Списки", ico: Icons.list },
   { href: "/week", name: "Итоги недели", ico: Icons.week, soon: true },
-  { href: "/evening", name: "Вечер", ico: Icons.evening, soon: true },
+  { href: "/evening", name: "Вечер", ico: Icons.evening },
   { href: "/vault", name: "Пароли", ico: Icons.vault, soon: true },
   { href: "/settings", name: "Настройки", ico: Icons.gear },
 ];

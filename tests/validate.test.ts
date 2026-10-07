@@ -21,9 +21,10 @@ const t = (id: string, due: string, done = false, time: string | null = null): T
 
 describe("events", () => {
   it("adds training on Tue/Thu/Sat and sorts by time", () => {
-    const ev = eventsOn("2026-10-06", [t("b", "2026-10-06", false, "20:00"), t("a", "2026-10-06", false, "09:00"), t("c", "2026-10-06")]);
-    expect(ev.map((e) => e.title)).toEqual(["a", "Тренировка", "b", "c"]);
-    expect(eventsOn("2026-10-07", []).length).toBe(0);
+    const tr = { days: [2, 4, 6], start: "10:00", end: "12:30" };
+    const ev = eventsOn("2026-10-06", [t("b", "2026-10-06", false, "20:00"), t("a", "2026-10-06", false, "09:00"), t("c", "2026-10-06")], tr);
+    expect(ev.map((e) => e.title)).toEqual(["a", "Тренировка до 12:30", "b", "c"]);
+    expect(eventsOn("2026-10-07", [], tr).length).toBe(0);
   });
   it("lists overdue open and today's tasks, open first", () => {
     const list = todayTasks([t("done-old", "2026-10-01", true), t("late", "2026-10-05"), t("todayDone", "2026-10-06", true), t("tomorrow", "2026-10-07"), t("today", "2026-10-06")], "2026-10-06");

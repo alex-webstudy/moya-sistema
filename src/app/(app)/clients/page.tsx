@@ -36,7 +36,15 @@ export default function Clients() {
     const n = Number(d.sum.replace(/\s/g, "").replace(",", ".")) || 0;
     const row = { name: d.name.trim(), work: d.work.trim(), sum: toUZS(n, d.cur, settings.rates).sum, due: d.due || null, waiting: d.waiting.trim() };
     if (!row.name) return toast("Напиши имя клиента");
-    const ok = edit === "new" ? (await addRec("clients", [{ ...row, last_contact: today }])).length > 0 : await patchRec("clients", edit!, row);
+    let ok: boolean;
+    if (edit === "new") {
+      ok = (await addRec("clients", [{ ...row, last_contact: today }])).length > 0;
+      // Every client gets a folder in «Клиентские проекты» for notes and meetings.
+      const parent = rec.folders.find((f) => !f.parent_id && f.name === "Клиентские проекты");
+      if (ok && parent && !rec.folders.some((f) => f.parent_id === parent.id && f.name === row.name)) {
+        await addRec("folders", [{ parent_id: parent.id, name: row.name, project: "Клиенты" }]);
+      }
+    } else ok = await patchRec("clients", edit!, row);
     if (ok) setEdit(null);
   }
   async function drop(c: Client) {

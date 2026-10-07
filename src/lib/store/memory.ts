@@ -1,5 +1,5 @@
 import { addDays, todayISO } from "../dates";
-import { TABLES, type Records, type Settings, type SettingKey, type Table } from "../records";
+import { SCHEMAS, TABLES, type Day, type Records, type Settings, type SettingKey, type Table } from "../records";
 import type { Idea, NewTask, Platform, Task, TaskPatch, Thought } from "../types";
 import type { Store } from "./types";
 
@@ -98,6 +98,16 @@ export const memoryStore: Store = {
     if (table === "clients") rec.income.forEach((i) => { if (i.client_id === id) i.client_id = null; });
     (rec as Record<Table, { id: string }[]>)[table] = rec[table].filter((x) => x.id !== id);
   },
+  async upsertDay(date: string, patch: object) {
+    const days = db().rec.days;
+    let d = days.find((x) => x.date === date);
+    if (!d) {
+      d = { ...(SCHEMAS.days.parse({ date }) as Day), id: crypto.randomUUID(), created_at: new Date().toISOString() };
+      days.push(d);
+    }
+    Object.assign(d, patch);
+    return { ...d };
+  },
   async getSettings() { return { ...db().settings }; },
   async setSetting<K extends SettingKey>(key: K, value: Settings[K]) { db().settings[key] = value; },
 };
@@ -125,11 +135,14 @@ function seedRecords(t: string, now: string): Records {
     c("Пример: Магазин «Ромашка»", "Поддержка", 2, 5_000_000, -3, false, -9, "Оплата счёта"),
     c("Пример: Денис", "Консультация", 2, 1_270_000, -6, true, -6),
   );
-  rec.income.push(row({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id }));
+  rec.income.push(
+    row({ date: addDays(t, -6), source: "Пример: Денис", note: "консультация", sum: 1_270_000, orig: "$100", client_id: rec.clients[2].id, account: "rs" as const }),
+    row({ date: addDays(t, -3), source: "Пример: частный заказ", note: "правки сайта", sum: 600_000, orig: "", client_id: null, account: "card" as const }));
   rec.charges.push(
-    row({ type: "credit" as const, name: "Пример: автокредит", bank: "Капиталбанк", sum: 2_800_000, day: 8, start: null, until: addDays(t, 300) }),
-    row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null }),
+    row({ type: "credit" as const, name: "Пример: автокредит", bank: "Капиталбанк", sum: 2_800_000, day: 8, start: null, until: addDays(t, 300), paid_to: null }),
+    row({ type: "sub" as const, name: "Пример: Claude Pro", bank: "", sum: 260_000, day: 18, start: null, until: null, paid_to: null }),
   );
+  rec.debts.push(row({ name: "Пример: долг за квартиру", note: "", total: 10_000_000, payments: [{ date: addDays(t, -2), sum: 3_000_000 }] }));
   rec.meetings.push(row({
     title: "Пример: созвон со Студией «Форма»", date: addDays(t, -1), folder_id: cl.id,
     summary: "Обсудили запуск сайта. Старт после подписания договора.",

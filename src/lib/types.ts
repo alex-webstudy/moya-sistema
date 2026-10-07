@@ -38,5 +38,4 @@ export interface Idea {
 export type NewTask = Pick<Task, "title" | "project" | "due" | "time">;
 export type TaskPatch = Partial<Pick<Task, "title" | "project" | "due" | "time" | "done">>;
 
-export const TRAINING_DAYS = [2, 4, 6]; // Tue, Thu, Sat
-export const TRAINING_TIME = "19:00";
+export type Training = { days: number[]; start: string; end: string }; // days: 0 = Sunday
