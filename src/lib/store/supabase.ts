@@ -29,7 +29,13 @@ export const supabaseStore: Store = {
     return check(await sb().from("tasks").insert(items).select()) as Task[];
   },
   async updateTask(id: string, patch: TaskPatch) {
-    const rows = check(await sb().from("tasks").update(patch).eq("id", id).select()) as Task[];
+    let r = await sb().from("tasks").update(patch).eq("id", id).select();
+    // Before 0009 is run the table has no done_at: still let tasks be ticked off.
+    if (r.error && "done_at" in patch && /done_at/.test(r.error.message)) {
+      const { done_at: _, ...rest } = patch;
+      r = await sb().from("tasks").update(rest).eq("id", id).select();
+    }
+    const rows = check(r) as Task[];
     return rows[0] ?? null;
   },
   async deleteTask(id: string) {
