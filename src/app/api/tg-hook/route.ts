@@ -1,4 +1,5 @@
 import { after, NextResponse, type NextRequest } from "next/server";
+import { NOTIFICATIONS_PAUSED } from "@/lib/paused";
 import { AIError, aiEnabled, dictateToTasks, type Upload } from "@/lib/ai";
 import { fdue, todayISO } from "@/lib/dates";
 import { briefLines } from "@/lib/reminders";
@@ -26,6 +27,8 @@ const MAX_FILE = 4_500_000;
 // so a slow Claude reply never makes Telegram resend the message.
 export async function POST(req: NextRequest) {
   if (!tgEnabled() || !hookSecretOk(req.headers.get("x-telegram-bot-api-secret-token"))) return NextResponse.json({ ok: false }, { status: 401 });
+  // Paused: Telegram gets 200 so it stops retrying, and the bot stays silent.
+  if (NOTIFICATIONS_PAUSED) return NextResponse.json({ ok: true });
   const update = (await req.json().catch(() => ({}))) as { message?: TgMessage };
   const m = update.message;
   if (m) after(() => handle(m).catch((e) => { console.error("tg", e); return send(m.chat.id, e instanceof AIError ? e.message : "Что-то пошло не так, попробуй ещё раз").catch(() => {}); }));

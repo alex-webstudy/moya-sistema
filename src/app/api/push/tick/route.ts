@@ -4,12 +4,14 @@ import { fail } from "@/lib/guard";
 import { cronTokenOk, sendToAll } from "@/lib/push";
 import { reminders } from "@/lib/reminders";
 import { loadSnapshot } from "@/lib/snapshot";
+import { NOTIFICATIONS_PAUSED } from "@/lib/paused";
 import { getStore } from "@/lib/store";
 import { send, tgEnabled } from "@/lib/telegram";
 
 // Called every 15 minutes by pg_cron in Supabase (not by the browser, so it has its own token instead of a session).
 export async function POST(req: NextRequest) {
   if (!cronTokenOk(req.headers.get("authorization"))) return NextResponse.json({ error: "Нет доступа" }, { status: 401 });
+  if (NOTIFICATIONS_PAUSED) return NextResponse.json({ sent: [], paused: true });
   try {
     const store = getStore();
     const snap = await loadSnapshot(store);
